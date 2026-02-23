@@ -62,14 +62,14 @@
 </footer>
 
 <script>
-    // Felsökning sker nu dolt i bakgrunden
-    window.log = function(msg, type = '') { console.log(`[${type.toUpperCase()}] ${msg}`); };
+    // --- KLOCKA ---
     function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString('sv-SE', {hour: '2-digit', minute: '2-digit'}); }
     setInterval(updateClock, 1000); updateClock();
 </script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // --- KARTA ---
     window.vehicleLayer = null;
     try {
         const NAVET = [57.724285, 12.936959];
@@ -80,11 +80,7 @@
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
         window.vehicleLayer = L.layerGroup().addTo(map);
 
-        // Håller kartan centrerad på Navet
-        new ResizeObserver(() => { 
-            map.invalidateSize(); 
-            map.setView(NAVET, 15, { animate: false }); 
-        }).observe(document.getElementById('map'));
+        new ResizeObserver(() => { map.invalidateSize(); map.setView(NAVET, 15, { animate: false }); }).observe(document.getElementById('map'));
 
         L.polyline([NAVET, [57.7245, 12.9378], [57.7250, 12.9382], SIMONSLAND], {color: '#1D1D1B', weight: 4, dashArray: '5, 8', opacity: 0.6}).addTo(map);
         L.polyline([NAVET, [57.723437,12.936337], [57.723231,12.936766], [57.722543,12.935414], [57.722016,12.935114], [57.722051,12.934771], [57.72185,12.934277], [57.721134,12.933049], [57.720933,12.932829], RESECENTRUM], {color: '#1D1D1B', weight: 4, dashArray: '5, 8', opacity: 0.6}).addTo(map);
@@ -95,9 +91,27 @@
 </script>
 
 <script>
+    // --- TÅG-DATA OCH ÖVERSÄTTNINGAR ---
     window.trainData = [];
     window.regionBusData = [];
     const TV_KEY = '8b529134e7844ac48320577d18d0237e';
+
+    // Station översättnings-mapp
+    const stationMap = {
+        'G': 'GÖTEBORG C',
+        'HR': 'HERRLJUNGA', 'HRC': 'HERRLJUNGA',
+        'VV': 'VARBERG', 'VBC': 'VARBERG', 'VB': 'VARBERG',
+        'BA': 'BORÅS C', 'BS': 'BORÅS C', 'BSC': 'BORÅS C',
+        'UV': 'UDDEVALLA',
+        'Ö': 'ÖXNERED', 'ÖX': 'ÖXNERED',
+        'VÄ': 'VÄNERSBORG',
+        'KIN': 'KINNA',
+        'SKE': 'SKENE',
+        'HND': 'HORRED',
+        'VS': 'VEDDIGE',
+        'LKP': 'LIDKÖPING',
+        'VBY': 'VISKAFORS'
+    };
 
     window.renderResecentrum = function() {
         let combined = [...window.trainData, ...window.regionBusData];
@@ -119,8 +133,8 @@
                 window.trainData = []; 
                 trains?.forEach(t => {
                     const diff = Math.round((new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation) - new Date()) / 60000);
-                    const m = { 'G': 'GÖTEBORG C', 'HR': 'HERRLJUNGA', 'HRC': 'HERRLJUNGA', 'VV': 'VARBERG', 'VBC': 'VARBERG', 'BA': 'BORÅS C', 'BS': 'BORÅS C' };
-                    let dest = t.ToLocation ? (m[t.ToLocation[0].LocationName.toUpperCase()] || t.ToLocation[0].LocationName) : "OKÄND";
+                    let destRaw = t.ToLocation ? t.ToLocation[0].LocationName.toUpperCase() : "OKÄND";
+                    let dest = stationMap[destRaw] || destRaw;
                     let html = `<div class="departure-row" style="border-right-color:#607d8b"><div class="line-badge" style="background:#607d8b; font-size:0.75rem;">TÅG</div><div class="dest-wrapper"><div class="destination">MOT ${dest}</div><div class="platform">Spår ${t.TrackAtLocation || '-'}</div></div><div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block">MIN</span>' : ''}</div></div>`;
                     window.trainData.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: html });
                 });
@@ -133,6 +147,7 @@
 </script>
 
 <script>
+    // --- VÄSTTRAFIK ---
     const V_KEY = 'QlypIiMS1PaWXe5Nu1HWl1bCYU8a';
     const V_SECRET = 'OfZF4rSB2MaWEx1qgTtuMVMue70a';
     const PROXY_LIST = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
@@ -144,7 +159,6 @@
         if(accessToken) return true;
         const auth = btoa(V_KEY.trim() + ":" + V_SECRET.trim());
         const url = "https://ext-api.vasttrafik.se/token";
-        
         for (let proxy of PROXY_LIST) {
             try {
                 const res = await fetch(proxy + encodeURIComponent(url), {
@@ -181,7 +195,7 @@
                             c++; 
                         }
                     });
-                    document.getElementById(id).innerHTML = h || "Inga bussar just nu.";
+                    document.getElementById(id).innerHTML = h || "Inga bussar.";
                 };
                 render("A", "board-simonsland-in");
                 render("B", "board-simonsland-out");
@@ -217,11 +231,7 @@
                         if (v.latitude && v.line) {
                             let ln = v.line.designation || v.line.name || v.line.shortName || "?";
                             let mode = v.line.transportMode || "";
-                            
-                            let bgColor = "#e2001a";
-                            let displayLn = ln;
-                            let lnNum = parseInt(ln);
-
+                            let bgColor = "#e2001a"; let displayLn = ln; let lnNum = parseInt(ln);
                             if (mode === "train" || mode === "tram" || ln.toLowerCase().includes("tåg")) {
                                 bgColor = "#888888"; displayLn = "TÅG";
                             } else if (!isNaN(lnNum) && lnNum > 31) {
@@ -229,12 +239,8 @@
                             } else if (isNaN(lnNum) && ln !== "?") {
                                 bgColor = "#1D1D1B";
                             }
-
                             L.marker([v.latitude, v.longitude], {
-                                icon: L.divIcon({ 
-                                    className: '', 
-                                    html: `<div style="background:${bgColor}; color:white; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:900; border:2px solid white;">${displayLn}</div>` 
-                                })
+                                icon: L.divIcon({ className: '', html: `<div style="background:${bgColor}; color:white; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:900; border:2px solid white;">${displayLn}</div>` })
                             }).addTo(window.vehicleLayer);
                         }
                     });
