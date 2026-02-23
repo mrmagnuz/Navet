@@ -35,9 +35,12 @@
         .eta { font-size: 1.6rem; font-weight: 900; color: var(--navet-green); line-height: 1; }
         
         footer { padding: 12px 40px; background: var(--navet-dark); color: white; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1rem; flex-shrink: 0; border-top: 3px solid var(--navet-green); }
-        .live-status { color: var(--navet-green); text-transform: uppercase; font-size: 0.85rem; }
+        .live-status { color: var(--navet-green); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; }
 
+        /* Navet-nål */
         .navet-pin { width: 30px; height: 30px; background: var(--navet-green); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid white; box-shadow: -2px 2px 5px rgba(0,0,0,0.3); }
+        
+        /* Buss-ikon */
         .bus-marker { background: var(--line1-red); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 16px; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
     </style>
 </head>
@@ -70,39 +73,46 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const NAVET_COORD = [57.724306, 12.937000];
+    // 1. KOORDINATER & KARTA
+    const NAVET_COORD = [57.724306, 12.937000]; // 57°43'27.5"N 12°56'13.2"E
+    const SIMONSLAND = [57.72557, 12.93841];
+    const RESECENTRUM = [57.7207, 12.9327];
+
     const map = L.map('map', { zoomControl: false, dragging: false, scrollWheelZoom: false }).setView(NAVET_COORD, 15);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
     const vehicleLayer = L.layerGroup().addTo(map);
 
+    // Centrera alltid på Resize
     new ResizeObserver(() => { map.invalidateSize(); map.setView(NAVET_COORD, 15, { animate: false }); }).observe(document.getElementById('map'));
 
-    L.polyline([NAVET_COORD, [57.7248, 12.9375], [57.7253, 12.9381], [57.72557, 12.93841]], {color: '#333', weight: 3, dashArray: '5, 10', opacity: 0.5}).addTo(map);
-    L.polyline([NAVET_COORD, [57.7235, 12.9365], [57.7215, 12.9335], [57.7207, 12.9327]], {color: '#333', weight: 3, dashArray: '5, 10', opacity: 0.5}).addTo(map);
+    // Gångvägar (Rättad för att gå längs trottoarer)
+    L.polyline([NAVET_COORD, [57.7246, 12.9373], [57.7253, 12.9381], SIMONSLAND], {color: '#333', weight: 3, dashArray: '5, 10', opacity: 0.4}).addTo(map);
+    L.polyline([NAVET_COORD, [57.7235, 12.9365], [57.7215, 12.9335], RESECENTRUM], {color: '#333', weight: 3, dashArray: '5, 10', opacity: 0.4}).addTo(map);
 
+    // Navet-markör (Pekar exakt med spetsen)
     const navetIcon = L.divIcon({ className: '', html: '<div class="navet-pin"></div>', iconSize: [30, 30], iconAnchor: [15, 30] });
-    L.marker(NAVET_COORD, {icon: navetIcon}).addTo(map).bindTooltip("NAVET", {permanent: true, direction: 'top', offset: [0, -32]});
+    L.marker(NAVET_COORD, {icon: navetIcon}).addTo(map).bindTooltip("NAVET", {permanent: true, direction: 'top', offset: [0, -35]});
 
-    const stationMap = { 'G':'GÖTEBORG C', 'HR':'HERRLJUNGA', 'VV':'VARBERG', 'UV':'UDDEVALLA', 'Ö':'ÖXNERED', 'VÄ':'VÄNERSBORG', 'KIN':'KINNA', 'SKE':'SKENE', 'BA':'BORÅS C', 'BS':'BORÅS C' };
+    // 2. INSTÄLLNINGAR & TIMER
     const V_KEY = 'QlypIiMS1PaWXe5Nu1HWl1bCYU8a';
     const V_SECRET = 'OfZF4rSB2MaWEx1qgTtuMVMue70a';
     const TV_KEY = '8b529134e7844ac48320577d18d0237e';
     const PROXY = 'https://corsproxy.io/?';
+    const stationMap = { 'G':'GÖTEBORG C', 'HR':'HERRLJUNGA', 'VV':'VARBERG', 'UV':'UDDEVALLA', 'Ö':'ÖXNERED', 'VÄ':'VÄNERSBORG', 'KIN':'KINNA', 'BA':'BORÅS C' };
     
     let accessToken = "";
     let nextUpdate = 30;
 
-    // --- KLOCKA OCH TIMER ---
+    // Tick-funktion för klocka och nedräkning
     function tick() {
-        const now = new Date();
-        document.getElementById('clock').innerText = now.toLocaleTimeString('sv-SE', {hour: '2-digit', minute: '2-digit'});
-        
+        document.getElementById('clock').innerText = new Date().toLocaleTimeString('sv-SE', {hour: '2-digit', minute: '2-digit'});
         nextUpdate--;
-        if (nextUpdate < 0) nextUpdate = 30;
+        if (nextUpdate < 0) { nextUpdate = 30; update(); }
         document.getElementById('timer').innerText = nextUpdate;
     }
     setInterval(tick, 1000);
 
+    // 3. API LOGIK
     async function login() {
         if(accessToken) return true;
         try {
@@ -117,24 +127,25 @@
 
     async function update() {
         if(!await login()) return;
-        nextUpdate = 30; // Nollställ timern vid lyckad start
 
-        // Bussar på karta (Linje 1)
+        // Byt ut fordon på kartan (Linje 1)
         try {
-            const res = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/pr/v4/positions?lowerLeftLat=57.71&lowerLeftLong=12.90&upperRightLat=57.74&upperRightLong=12.96'), { headers: { 'Authorization': 'Bearer ' + accessToken } });
-            const pData = await res.json();
+            const resP = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/pr/v4/positions?lowerLeftLat=57.71&lowerLeftLong=12.90&upperRightLat=57.75&upperRightLong=12.97'), { headers: { 'Authorization': 'Bearer ' + accessToken } });
+            const pData = await resP.json();
             vehicleLayer.clearLayers();
             pData.forEach(v => {
-                const ln = v.line.designation || v.line.shortName || "";
-                if (ln === "1" || ln === "01" || parseInt(ln) === 1) {
-                    L.marker([v.latitude, v.longitude], {
-                        icon: L.divIcon({ className: '', html: `<div class="bus-marker"><i class="fa-solid fa-bus"></i></div>`, iconSize: [32, 32], iconAnchor: [16, 16] })
-                    }).addTo(vehicleLayer);
+                if (v.line) {
+                    const ln = v.line.designation || v.line.shortName || "";
+                    if (ln === "1" || ln === "01" || parseInt(ln) === 1) {
+                        L.marker([v.latitude, v.longitude], {
+                            icon: L.divIcon({ className: '', html: `<div class="bus-marker"><i class="fa-solid fa-bus"></i></div>`, iconSize: [32, 32], iconAnchor: [16, 16] })
+                        }).addTo(vehicleLayer);
+                    }
                 }
             });
-        } catch(e) {}
+        } catch(e) { console.error("Karta fel:", e); }
 
-        // Simonsland
+        // Uppdatera Simonsland
         try {
             const resS = await fetch(PROXY + encodeURIComponent(`https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082035000/departures?limit=30`), { headers: { 'Authorization': 'Bearer ' + accessToken } });
             const dS = await resS.json();
@@ -152,9 +163,10 @@
             fill("A", "board-simonsland-in"); fill("B", "board-simonsland-out");
         } catch(e) {}
 
-        // Resecentrum
+        // Uppdatera Resecentrum
         let combined = [];
         try {
+            // Tåg
             const xml = `<REQUEST><LOGIN authenticationkey='${TV_KEY}'/><QUERY objecttype='TrainAnnouncement' schemaversion='1.9' orderby='AdvertisedTimeAtLocation asc'><FILTER><AND><OR><EQ name='LocationSignature' value='Bs'/><EQ name='LocationSignature' value='Bsc'/></OR><EQ name='ActivityType' value='Avgang'/><GT name='AdvertisedTimeAtLocation' value='$dateadd(-00:10:00)'/></AND></FILTER></QUERY></REQUEST>`;
             const resT = await fetch("https://api.trafikinfo.trafikverket.se/v2/data.json", { method: 'POST', body: xml });
             const dataT = await resT.json();
@@ -163,7 +175,7 @@
                 let dRaw = t.ToLocation ? t.ToLocation[0].LocationName.toUpperCase() : "OKÄND";
                 combined.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: `<div class="departure-row" style="border-right-color:#607d8b"><div class="line-badge" style="background:#607d8b; font-size:0.75rem;">TÅG</div><div class="dest-wrapper"><div class="destination">MOT ${stationMap[dRaw] || dRaw}</div><div class="platform">Spår ${t.TrackAtLocation || '-'}</div></div><div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span></div></div>` });
             });
-
+            // Regionbuss
             const resB = await fetch(PROXY + encodeURIComponent(`https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082017000/departures?limit=30`), { headers: { 'Authorization': 'Bearer ' + accessToken } });
             const dB = await resB.json();
             dB.results?.forEach(i => {
@@ -178,8 +190,8 @@
         } catch(e) {}
     }
 
+    // Kör första uppdateringen manuellt vid start
     update();
-    setInterval(update, 30000);
 </script>
 </body>
 </html>
