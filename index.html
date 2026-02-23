@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAVET LIVE | Stabil</title>
+    <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root { --navet-green: #49a441; --navet-dark: #1D1D1B; }
+        body { font-family: 'Montserrat', sans-serif; background: #eee url('https://www.navet.com/wp-content/uploads/2023/03/bg3.png') no-repeat center center fixed; background-size: cover; margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        header { padding: 10px 40px; display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(5px); border-bottom: 3px solid var(--navet-green); z-index: 1000; flex-shrink: 0; }
+        .header-title { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; }
+        #clock { font-size: 2.2rem; font-weight: 900; }
+        .main-wrapper { display: flex; flex: 1; padding: 10px 20px; gap: 15px; overflow: hidden; }
+        .left-content { flex: 2; display: flex; flex-direction: column; gap: 10px; }
+        .simonsland-grid { display: flex; gap: 15px; flex-shrink: 0; }
+        #map { flex: 1; border-radius: 15px; border: 3px solid var(--navet-dark); z-index: 1; background: #ddd; }
+        .right-content { flex: 1; display: flex; flex-direction: column; }
+        .column { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+        .column-header { font-family: 'Amatic SC', cursive; font-size: 1.8rem; text-align: center; background: var(--navet-dark); color: white; padding: 5px; border-radius: 8px 8px 0 0; margin-bottom: 5px; }
+        .departure-list { display: flex; flex-direction: column; gap: 4px; padding: 5px; overflow-y: auto; }
+        .departure-row { background: rgba(255, 255, 255, 0.95); display: flex; align-items: center; padding: 6px 12px; border-radius: 8px; border-right: 6px solid var(--navet-green); box-shadow: 0 2px 4px rgba(0,0,0,0.1); min-height: 55px; }
+        .line-badge { min-width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; font-weight: 900; border-radius: 6px; margin-right: 12px; color: white; background: #333; font-size: 1.1rem; }
+        .dest-wrapper { flex-grow: 1; overflow: hidden; }
+        .destination { font-size: 0.85rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .platform { font-size: 0.75rem; color: #666; font-weight: 700; }
+        .time-area { text-align: right; min-width: 60px; }
+        .eta { font-size: 1.5rem; font-weight: 900; color: var(--navet-green); line-height: 1; }
+        #diag-panel { background: #000; color: #0f0; font-family: monospace; padding: 10px; font-size: 0.75rem; max-height: 100px; overflow-y: auto; flex-shrink: 0; border-top: 2px solid #333; }
+        .log-ok { color: #4f4; } .log-err { color: #f44; } .log-warn { color: #ffcc00; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-title">HÅLLPLATSER SIMONSLAND OCH RESECENTRUM</div>
+    <div id="clock">00:00</div>
+</header>
+
+<div class="main-wrapper">
+    <div class="left-content">
+        <div class="simonsland-grid">
+            <div class="column"><div class="column-header">SIMONSLAND MOT CENTRUM</div><div id="board-simonsland-in" class="departure-list">Söker Västtrafik...</div></div>
+            <div class="column"><div class="column-header">SIMONSLAND MOT KNALLELAND</div><div id="board-simonsland-out" class="departure-list">Söker Västtrafik...</div></div>
+        </div>
+        <div id="map"></div>
+    </div>
+    <div class="right-content">
+        <div class="column"><div class="column-header">Resecentrum (Tåg & Region)</div><div id="board-resecentrum" class="departure-list">Söker Tåg...</div></div>
+    </div>
+</div>
+
+<div id="diag-panel">
+    <div id="log-content">> [System] Startar Frånkopplat Läge...</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    // --- 1. KLOCKAN ---
+    function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString('sv-SE', {hour: '2-digit', minute: '2-digit'}); }
+    setInterval(updateClock, 1000); updateClock();
+
+    function log(msg, type = '') {
+        const content = document.getElementById('log-content');
+        const div = document.createElement('div');
+        if(type) div.className = 'log-' + type;
+        div.innerText = `> [${new Date().toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit', second:'2-digit'})}] ${msg}`;
+        content.prepend(div);
+    }
+
+    // --- 2. KARTAN (Helt oberoende) ---
+    let map, vehicleLayer;
+    try {
+        const NAVET = [57.724285, 12.936959];
+        const SIMONSLAND = [57.72557, 12.93841];
+        const RESECENTRUM = [57.720733, 12.932754];
+
+        map = L.map('map', { zoomControl: false }).setView(NAVET, 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+        vehicleLayer = L.layerGroup().addTo(map);
+
+        L.polyline([NAVET, [57.7245, 12.9378], [57.7250, 12.9382], SIMONSLAND], {color: '#1D1D1B', weight: 4, dashArray: '5, 8', opacity: 0.6}).addTo(map);
+        L.polyline([NAVET, [57.723437,12.936337], [57.723231,12.936766], [57.722543,12.935414], [57.722016,12.935114], [57.722051,12.934771], [57.72185,12.934277], [57.721134,12.933049], [57.720933,12.932829], RESECENTRUM], {color: '#1D1D1B', weight: 4, dashArray: '5, 8', opacity: 0.6}).addTo(map);
+        L.circleMarker(NAVET, { radius: 8, fillColor: "#49a441", color: "#fff", weight: 3, fillOpacity: 1 }).addTo(map).bindTooltip("NAVET", {permanent: true, direction: 'left', offset: [-10, 0]});
+        L.circleMarker(SIMONSLAND, { radius: 6, fillColor: "#1D1D1B", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map).bindTooltip("Simonsland", {permanent: true, direction: 'right'});
+        L.circleMarker(RESECENTRUM, { radius: 6, fillColor: "#1D1D1B", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map).bindTooltip("Resecentrum", {permanent: true, direction: 'left'});
+    } catch (e) { log("Nätverk blockerar kartan.", "err"); }
+
+    // --- 3. DATA-HANTERING ---
+    const V_KEY = 'QlypIiMS1PaWXe5Nu1HWl1bCYU8a';
+    const V_SECRET = 'OfZF4rSB2MaWEx1qgTtuMVMue70a';
+    const TV_KEY = '8b529134e7844ac48320577d18d0237e';
+    const PROXY_LIST = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
+    
+    let accessToken = "";
+    let activeProxy = "";
+    
+    // Vi lagrar Tåg och Regionbussar separat så de kan kombineras oberoende av varandra
+    let trainData = [];
+    let regionBusData = [];
+
+    function renderResecentrum() {
+        let combined = [...trainData, ...regionBusData];
+        combined.sort((a,b) => a.t - b.t);
+        let rHtml = ""; let rCount = 0;
+        combined.forEach(item => {
+            if (item.t > new Date(Date.now() - 60000) && rCount < 12) { rHtml += item.html; rCount++; }
+        });
+        document.getElementById('board-resecentrum').innerHTML = rHtml || "Inga avgångar.";
+    }
+
+    // --- TÅG (Helt oberoende av Västtrafik) ---
+    async function updateTrains() {
+        try {
+            const xml = `<REQUEST><LOGIN authenticationkey='${TV_KEY}'/><QUERY objecttype='TrainAnnouncement' schemaversion='1.9' orderby='AdvertisedTimeAtLocation asc'><FILTER><AND><OR><EQ name='LocationSignature' value='Bs'/><EQ name='LocationSignature' value='Bsc'/></OR><EQ name='ActivityType' value='Avgang'/><GT name='AdvertisedTimeAtLocation' value='$dateadd(-00:10:00)'/></AND></FILTER></QUERY></REQUEST>`;
+            const res = await fetch("https://api.trafikinfo.trafikverket.se/v2/data.json", { method: 'POST', headers: { 'Content-Type': 'text/xml' }, body:
