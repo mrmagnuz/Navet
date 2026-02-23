@@ -45,7 +45,7 @@
 
 <header>
     <img src="https://fssc.se/wp-content/uploads/2023/09/Logotyp-svart-768x290.png" class="logo-img" alt="Navet">
-    <div style="font-weight: 900; text-transform: uppercase;">Live-trafik: Simonsland & Resecentrum</div>
+    <div style="font-weight: 900; text-transform: uppercase;">HÅLLPLATSER Simonsland & Resecentrum</div>
     <div id="clock">00:00</div>
 </header>
 
@@ -71,7 +71,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     // 1. KOORDINATER & KARTA
-    const NAVET_COORD = [57.724406, 12.937000]; // Flyttad upp något
+    const NAVET_COORD = [57.724406, 12.937000]; // Justerad något uppåt
     const SIMONSLAND = [57.72557, 12.93841];
     const RESECENTRUM = [57.720733, 12.932754];
 
@@ -79,31 +79,39 @@
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
     const vehicleLayer = L.layerGroup().addTo(map);
 
-    // Centrera alltid
     new ResizeObserver(() => { map.invalidateSize(); map.setView(NAVET_COORD, 15, { animate: false }); }).observe(document.getElementById('map'));
 
-    // GÅNGVÄGAR (Återställda stigar)
-    L.polyline([NAVET_COORD, [57.7248, 12.9378], [57.7253, 12.9382], SIMONSLAND], {color: '#333', weight: 3, dashArray: '5, 10', opacity: 0.5}).addTo(map);
+    // GÅNGVÄGAR (Exakta stigar)
+    L.polyline([NAVET_COORD, [57.7245, 12.9378], [57.7250, 12.9382], SIMONSLAND], {color: '#333', weight: 3, dashArray: '5, 10', opacity: 0.5}).addTo(map);
     L.polyline([NAVET_COORD, [57.723437,12.936337], [57.723231,12.936766], [57.722543,12.935414], [57.722016,12.935114], [57.722051,12.934771], [57.72185,12.934277], [57.721134,12.933049], [57.720933,12.932829], RESECENTRUM], {color: '#333', weight: 3, dashArray: '5, 10', opacity: 0.5}).addTo(map);
 
-    // Hållplatsmarkörer vid ändarna
+    // Hållplatser ändpunkter
     L.circleMarker(SIMONSLAND, { radius: 6, fillColor: "#1D1D1B", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map).bindTooltip("Simonsland", {permanent: true, direction: 'right'});
     L.circleMarker(RESECENTRUM, { radius: 6, fillColor: "#1D1D1B", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map).bindTooltip("Resecentrum", {permanent: true, direction: 'left'});
 
-    // Navet-markör (Pekar exakt)
+    // Navet-markör
     const navetIcon = L.divIcon({ className: '', html: '<div class="navet-pin"></div>', iconSize: [30, 30], iconAnchor: [15, 30] });
     L.marker(NAVET_COORD, {icon: navetIcon}).addTo(map).bindTooltip("NAVET", {permanent: true, direction: 'top', offset: [0, -32]});
 
-    // 2. INSTÄLLNINGAR & TIMER
+    // 2. STATIONSMAP (UTÖKAD)
+    const stationMap = { 
+        'G':'GÖTEBORG C', 'HR':'HERRLJUNGA', 'HRC':'HERRLJUNGA', 
+        'VV':'VARBERG', 'VBC':'VARBERG', 'VB':'VARBERG',
+        'UV':'UDDEVALLA', 'Ö':'ÖXNERED', 'ÖX':'ÖXNERED', 
+        'VÄ':'VÄNERSBORG', 'KIN':'KINNA', 'SKE':'SKENE', 
+        'BA':'BORÅS C', 'BS':'BORÅS C', 'BSC':'BORÅS C',
+        'VBY':'VISKAFORS', 'HND':'HORRED', 'VS':'VEDDIGE'
+    };
+
     const V_KEY = 'QlypIiMS1PaWXe5Nu1HWl1bCYU8a';
     const V_SECRET = 'OfZF4rSB2MaWEx1qgTtuMVMue70a';
     const TV_KEY = '8b529134e7844ac48320577d18d0237e';
     const PROXY = 'https://corsproxy.io/?';
-    const stationMap = { 'G':'GÖTEBORG C', 'HR':'HERRLJUNGA', 'VV':'VARBERG', 'UV':'UDDEVALLA', 'Ö':'ÖXNERED', 'VÄ':'VÄNERSBORG', 'KIN':'KINNA', 'BA':'BORÅS C', 'BS':'BORÅS C' };
     
     let accessToken = "";
     let nextUpdate = 30;
 
+    // Timer
     function tick() {
         document.getElementById('clock').innerText = new Date().toLocaleTimeString('sv-SE', {hour: '2-digit', minute: '2-digit'});
         nextUpdate--;
@@ -128,15 +136,18 @@
     async function update() {
         if(!await login()) return;
 
-        // Bussar på karta (Linje 1)
+        // BUSSAR PÅ KARTA (Linje 1)
         try {
-            const resP = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/pr/v4/positions?lowerLeftLat=57.71&lowerLeftLong=12.90&upperRightLat=57.75&upperRightLong=12.97'), { headers: { 'Authorization': 'Bearer ' + accessToken } });
+            const resP = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/pr/v4/positions?lowerLeftLat=57.65&lowerLeftLong=12.85&upperRightLat=57.78&upperRightLong=13.05'), { headers: { 'Authorization': 'Bearer ' + accessToken } });
             const pData = await resP.json();
             vehicleLayer.clearLayers();
             pData.forEach(v => {
                 if (v.line) {
-                    const ln = v.line.designation || v.line.shortName || "";
-                    if (ln === "1" || ln === "01" || parseInt(ln) === 1) {
+                    // Vi rensar bort allt utom siffror för att fånga "1", "01", "Bus 1" osv.
+                    const lnRaw = v.line.designation || v.line.shortName || v.line.name || "";
+                    const lnClean = lnRaw.toString().replace(/\D/g, ''); 
+                    
+                    if (lnClean === "1") {
                         L.marker([v.latitude, v.longitude], {
                             icon: L.divIcon({ className: '', html: `<div class="bus-marker"><i class="fa-solid fa-bus"></i></div>`, iconSize: [32, 32], iconAnchor: [16, 16] })
                         }).addTo(vehicleLayer);
@@ -145,7 +156,7 @@
             });
         } catch(e) {}
 
-        // Simonsland-listor
+        // SIMONSLAND LISTOR
         try {
             const resS = await fetch(PROXY + encodeURIComponent(`https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082035000/departures?limit=30`), { headers: { 'Authorization': 'Bearer ' + accessToken } });
             const dS = await resS.json();
@@ -163,9 +174,10 @@
             fill("A", "board-simonsland-in"); fill("B", "board-simonsland-out");
         } catch(e) {}
 
-        // Resecentrum
+        // RESECENTRUM TÅG/REGION
         let combined = [];
         try {
+            // Tåg från Trafikverket
             const xml = `<REQUEST><LOGIN authenticationkey='${TV_KEY}'/><QUERY objecttype='TrainAnnouncement' schemaversion='1.9' orderby='AdvertisedTimeAtLocation asc'><FILTER><AND><OR><EQ name='LocationSignature' value='Bs'/><EQ name='LocationSignature' value='Bsc'/></OR><EQ name='ActivityType' value='Avgang'/><GT name='AdvertisedTimeAtLocation' value='$dateadd(-00:10:00)'/></AND></FILTER></QUERY></REQUEST>`;
             const resT = await fetch("https://api.trafikinfo.trafikverket.se/v2/data.json", { method: 'POST', body: xml });
             const dataT = await resT.json();
@@ -175,6 +187,7 @@
                 combined.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: `<div class="departure-row" style="border-right-color:#607d8b"><div class="line-badge" style="background:#607d8b; font-size:0.75rem;">TÅG</div><div class="dest-wrapper"><div class="destination">MOT ${stationMap[dRaw] || dRaw}</div><div class="platform">Spår ${t.TrackAtLocation || '-'}</div></div><div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span></div></div>` });
             });
 
+            // Regionbussar från Västtrafik
             const resB = await fetch(PROXY + encodeURIComponent(`https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082017000/departures?limit=30`), { headers: { 'Authorization': 'Bearer ' + accessToken } });
             const dB = await resB.json();
             dB.results?.forEach(i => {
