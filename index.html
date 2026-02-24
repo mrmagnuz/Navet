@@ -2,206 +2,442 @@
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NAVET | Live-tavla</title>
     <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root { --navet-green: #49a441; --navet-dark: #1D1D1B; --line1-red: #e2001a; }
-        body { font-family: 'Montserrat', sans-serif; background: #eee url('https://www.navet.com/wp-content/uploads/2023/03/bg3.png') no-repeat center center fixed; background-size: cover; margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        header { padding: 10px 40px; display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(5px); border-bottom: 3px solid var(--navet-green); z-index: 1000; flex-shrink: 0; }
-        .logo-img { height: 45px; }
-        #clock { font-size: 2.2rem; font-weight: 900; }
-        
-        .main-wrapper { display: flex; flex: 1; padding: 15px 25px; gap: 20px; overflow: hidden; }
-        .left-content { flex: 2; display: flex; flex-direction: column; gap: 15px; align-items: center; }
-        .simonsland-grid { display: flex; gap: 15px; width: 100%; flex-shrink: 0; }
-        
-        .map-container { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; min-height: 0; }
-        #map { height: 100%; aspect-ratio: 1 / 1; border-radius: 20px; border: 4px solid var(--navet-dark); background: #f9f9f9; box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
-        
-        .right-content { flex: 1.1; display: flex; flex-direction: column; }
-        .column { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-        .column-header { font-family: 'Amatic SC', cursive; font-size: 1.8rem; text-align: center; background: var(--navet-dark); color: white; padding: 6px; border-radius: 8px 8px 0 0; margin-bottom: 5px; }
-        .departure-list { display: flex; flex-direction: column; gap: 5px; padding: 5px; overflow-y: auto; }
-        
-        .departure-row { background: rgba(255, 255, 255, 0.95); display: flex; align-items: center; padding: 8px 14px; border-radius: 10px; border-right: 6px solid var(--navet-green); box-shadow: 0 3px 6px rgba(0,0,0,0.08); min-height: 60px; }
-        .line-badge { min-width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; font-weight: 900; border-radius: 8px; margin-right: 15px; color: white; background: #333; font-size: 1.2rem; }
+        :root { --navet-green: #49a441; --navet-dark: #1D1D1B; }
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: #eee url('https://www.navet.com/wp-content/uploads/2023/03/bg3.png') no-repeat center center fixed;
+            background-size: cover; margin: 0; padding: 0; height: 100vh;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        header {
+            padding: 15px 40px; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(5px);
+            border-bottom: 3px solid var(--navet-green); z-index: 1000;
+        }
+        .logo-img { height: 50px; }
+        .header-title { font-size: 1.6rem; font-weight: 900; text-transform: uppercase; }
+        #clock { font-size: 2.5rem; font-weight: 900; }
+        .columns-container { display: flex; padding: 10px 20px; gap: 15px; flex-shrink: 0; }
+        .column { flex: 1; display: flex; flex-direction: column; }
+        .column-header {
+            font-family: 'Amatic SC', cursive; font-size: 1.8rem; text-align: center;
+            background: var(--navet-dark); color: white; padding: 5px; border-radius: 8px 8px 0 0; margin-bottom: 5px;
+        }
+        .departure-list { display: flex; flex-direction: column; gap: 4px; min-height: 250px; }
+        .departure-row {
+            background: rgba(255, 255, 255, 0.95); display: flex; align-items: center; padding: 6px 12px;
+            border-radius: 8px; border-right: 6px solid var(--navet-green);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); min-height: 55px;
+        }
+        .line-badge { 
+            min-width: 45px; height: 45px; display: flex; justify-content: center; align-items: center;
+            font-weight: 900; border-radius: 6px; margin-right: 12px; color: white; background: #333; font-size: 1.1rem;
+        }
         .dest-wrapper { flex-grow: 1; overflow: hidden; }
-        .destination { font-size: 0.9rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .platform { font-size: 0.8rem; color: #666; font-weight: 700; }
-        .eta { font-size: 1.6rem; font-weight: 900; color: var(--navet-green); line-height: 1; }
+        .destination { font-size: 0.9rem; font-weight: 900; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .platform { font-size: 0.75rem; color: #666; font-weight: 700; }
+        .time-area { text-align: right; min-width: 60px; }
+        .eta { font-size: 1.5rem; font-weight: 900; color: var(--navet-green); line-height: 1; }
+        #map { flex-grow: 1; margin: 10px 20px; border-radius: 15px; border: 3px solid var(--navet-dark); z-index: 1; }
+        footer { padding: 8px 40px; background: var(--navet-dark); color: white; display: flex; justify-content: space-between; font-weight: 700; font-size: 0.9rem; }
+        #debug-log { font-size: 0.75rem; opacity: 0.8; color: #ffcc00; }
         
-        footer { padding: 12px 40px; background: var(--navet-dark); color: white; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1rem; flex-shrink: 0; border-top: 3px solid var(--navet-green); }
-        .live-status { color: var(--navet-green); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; }
-
-        .navet-pin { width: 30px; height: 30px; background: var(--navet-green); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid white; box-shadow: -2px 2px 5px rgba(0,0,0,0.3); }
-        .bus-marker { background: var(--line1-red); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 16px; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
+        /* CSS för Easter Egg-texten */
+        .easter-egg {
+            color: var(--navet-green);
+            font-size: 0.7em;
+            font-style: italic;
+            text-transform: none; /* Ser till att texten är gemener för att sticka ut från orten */
+            font-weight: 700;
+            margin-left: 6px;
+        }
     </style>
 </head>
 <body>
 
 <header>
-    <img src="https://fssc.se/wp-content/uploads/2023/09/Logotyp-svart-768x290.png" class="logo-img" alt="Navet">
-    <div style="font-weight: 900; text-transform: uppercase;">HÅLLPLATSER Simonsland & Resecentrum</div>
+    <img src="https://fssc.se/wp-content/uploads/2023/09/Logotyp-svart-768x290.png" class="logo-img">
+    <div class="header-title">Hållplatser Simonsland & Resecentrum</div>
     <div id="clock">00:00</div>
 </header>
 
-<div class="main-wrapper">
-    <div class="left-content">
-        <div class="simonsland-grid">
-            <div class="column"><div class="column-header">SIMONSLAND MOT CENTRUM</div><div id="board-simonsland-in" class="departure-list">Ansluter...</div></div>
-            <div class="column"><div class="column-header">SIMONSLAND MOT KNALLELAND</div><div id="board-simonsland-out" class="departure-list">Ansluter...</div></div>
-        </div>
-        <div class="map-container"><div id="map"></div></div>
+<div class="columns-container">
+    <div class="column">
+        <div class="column-header">Simonsland (Läge A)</div>
+        <div id="board-simonsland-in" class="departure-list">Laddar...</div>
     </div>
-    <div class="right-content">
-        <div class="column"><div class="column-header">RESECENTRUM (TÅG & REGION)</div><div id="board-resecentrum" class="departure-list">Ansluter...</div></div>
+    <div class="column">
+        <div class="column-header">Simonsland (Övriga)</div>
+        <div id="board-simonsland-out" class="departure-list">Laddar...</div>
+    </div>
+    <div class="column">
+        <div class="column-header">Resecentrum (Tåg & Region)</div>
+        <div id="board-resecentrum" class="departure-list">Laddar...</div>
     </div>
 </div>
 
+<div id="map"></div>
+
 <footer>
-    <div class="live-status">Live - Uppdateras om <span id="timer">30</span> sekunder</div>
     <div>UPPLEV. LÄR. UTFORSKA.</div>
-    <div>NAVET</div>
+    <div id="debug-log">System startar...</div>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // 1. KOORDINATER & KARTA
-    const NAVET_COORD = [57.724406, 12.937000]; // Justerad något uppåt
-    const SIMONSLAND = [57.72557, 12.93841];
-    const RESECENTRUM = [57.720733, 12.932754];
-
-    const map = L.map('map', { zoomControl: false, dragging: false, scrollWheelZoom: false }).setView(NAVET_COORD, 15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-    const vehicleLayer = L.layerGroup().addTo(map);
-
-    new ResizeObserver(() => { map.invalidateSize(); map.setView(NAVET_COORD, 15, { animate: false }); }).observe(document.getElementById('map'));
-
-    // GÅNGVÄGAR (Exakta stigar)
-    L.polyline([NAVET_COORD, [57.7245, 12.9378], [57.7250, 12.9382], SIMONSLAND], {color: '#333', weight: 3, dashArray: '5, 10', opacity: 0.5}).addTo(map);
-    L.polyline([NAVET_COORD, [57.723437,12.936337], [57.723231,12.936766], [57.722543,12.935414], [57.722016,12.935114], [57.722051,12.934771], [57.72185,12.934277], [57.721134,12.933049], [57.720933,12.932829], RESECENTRUM], {color: '#333', weight: 3, dashArray: '5, 10', opacity: 0.5}).addTo(map);
-
-    // Hållplatser ändpunkter
-    L.circleMarker(SIMONSLAND, { radius: 6, fillColor: "#1D1D1B", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map).bindTooltip("Simonsland", {permanent: true, direction: 'right'});
-    L.circleMarker(RESECENTRUM, { radius: 6, fillColor: "#1D1D1B", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map).bindTooltip("Resecentrum", {permanent: true, direction: 'left'});
-
-    // Navet-markör
-    const navetIcon = L.divIcon({ className: '', html: '<div class="navet-pin"></div>', iconSize: [30, 30], iconAnchor: [15, 30] });
-    L.marker(NAVET_COORD, {icon: navetIcon}).addTo(map).bindTooltip("NAVET", {permanent: true, direction: 'top', offset: [0, -32]});
-
-    // 2. STATIONSMAP (UTÖKAD)
-    const stationMap = { 
-        'G':'GÖTEBORG C', 'HR':'HERRLJUNGA', 'HRC':'HERRLJUNGA', 
-        'VV':'VARBERG', 'VBC':'VARBERG', 'VB':'VARBERG',
-        'UV':'UDDEVALLA', 'Ö':'ÖXNERED', 'ÖX':'ÖXNERED', 
-        'VÄ':'VÄNERSBORG', 'KIN':'KINNA', 'SKE':'SKENE', 
-        'BA':'BORÅS C', 'BS':'BORÅS C', 'BSC':'BORÅS C',
-        'VBY':'VISKAFORS', 'HND':'HORRED', 'VS':'VEDDIGE'
-    };
-
+    // --- API NYCKLAR ---
     const V_KEY = 'QlypIiMS1PaWXe5Nu1HWl1bCYU8a';
     const V_SECRET = 'OfZF4rSB2MaWEx1qgTtuMVMue70a';
     const TV_KEY = '8b529134e7844ac48320577d18d0237e';
     const PROXY = 'https://corsproxy.io/?';
-    
-    let accessToken = "";
-    let nextUpdate = 30;
 
-    // Timer
-    function tick() {
-        document.getElementById('clock').innerText = new Date().toLocaleTimeString('sv-SE', {hour: '2-digit', minute: '2-digit'});
-        nextUpdate--;
-        if (nextUpdate <= 0) { nextUpdate = 30; update(); }
-        document.getElementById('timer').innerText = nextUpdate;
+    function setDebug(msg) { document.getElementById('debug-log').innerText = msg; }
+
+    // --- KARTA OCH RUTTER ---
+    const NAVET_ENTRE = [57.724285, 12.936959];
+    const STOP_SIMONSLAND = [57.72557, 12.93841];
+    const STOP_RESECENTRUM = [57.720733, 12.932754];
+
+    const map = L.map('map', { zoomControl: false }).setView([57.7225, 12.9355], 15);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+    L.polyline([NAVET_ENTRE, [57.7245, 12.9378], [57.7250, 12.9382], STOP_SIMONSLAND], {color: '#1D1D1B', weight: 4, dashArray: '5, 8', opacity: 0.6}).addTo(map);
+    L.polyline([NAVET_ENTRE, [57.723437,12.936337], [57.723231,12.936766], [57.722543,12.935414], [57.722016,12.935114], [57.722051,12.934771], [57.72185,12.934277], [57.721134,12.933049], [57.720933,12.932829], STOP_RESECENTRUM], {color: '#1D1D1B', weight: 4, dashArray: '5, 8', opacity: 0.6}).addTo(map);
+
+    L.circleMarker(NAVET_ENTRE, { radius: 8, fillColor: "#49a441", color: "#fff", weight: 3, fillOpacity: 1 }).addTo(map).bindTooltip("DU ÄR HÄR", {permanent: true, direction: 'top'});
+    L.circleMarker(STOP_SIMONSLAND, { radius: 6, fillColor: "#1D1D1B", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map).bindTooltip("Simonsland", {permanent: true, direction: 'right'});
+    L.circleMarker(STOP_RESECENTRUM, { radius: 6, fillColor: "#1D1D1B", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map).bindTooltip("Resecentrum", {permanent: true, direction: 'left'});
+
+    const vehicleLayer = L.layerGroup().addTo(map);
+
+    // ==========================================
+    // NAVETS HEMLIGA EASTER EGGS 🥚🔬
+    // ==========================================
+    const easterEggs = {
+        "GÖTEBORG": ["– för att leta efter Glenn", "– dags att beräkna vindmotståndet på Avenyn", "– medtag egen paraply-krockkudde", "– ett utmärkt tillfälle att räkna spårvagnar"],
+        "GÖTEBORG C": ["– för att leta efter Glenn", "– dags att beräkna vindmotståndet på Avenyn", "– medtag egen paraply-krockkudde", "– ett utmärkt tillfälle att räkna spårvagnar"],
+        "BORÅS": ["– kom ihåg att fälla ut gälarna", "– dags att mäta regndropparnas exakta volym", "– Pinocchios byxor behöver tvättas", "– perfekt för en studie i rondell-navigering"],
+        "UDDEVALLA": ["– för att bygga en ubåt av snäckskal", "– dags att utmana en fiskmås i schack", "– Bohusläns inofficiella rymdbas"],
+        "VISKAFORS": ["– för att spana efter Viskan-odjuret", "– dags att mäta friktionen i gummisulor", "– skogen kallar: krama ett träd!"],
+        "KINNARUMMA": ["– orten med det roligaste namnet att säga snabbt", "– dags att räkna antalet epatraktorer", "– där tiden bevisligen går lite långsammare"],
+        "KINNA": ["– för att rulla in dig i 14 meter tyg", "– dags att sy en rymddräkt av gamla gardiner", "– varning: extrem risk för trådtrazzel", "– undersök bomullens aerodynamik"],
+        "SKENE": ["– för att rulla in dig i 14 meter tyg", "– dags att sy en rymddräkt av gamla gardiner", "– varning: extrem risk för trådtrazzel", "– undersök bomullens aerodynamik"],
+        "SVENLJUNGA": ["– för att koka kaffe på Ätran-vatten", "– dags att uppfinna en ny typ av papperskorg", "– där moped är det enda sanna färdmedlet"],
+        "FRISTAD": ["– dags att bygga ett fort av klädhängare", "– för att mäta ljudets hastighet över sjön", "– medtag egen picknickkorg och förstoringsglas"],
+        "TRANEMO": ["– för att testa hållfastheten i glasrutor", "– dags att starta en kör med tranor", "– orten där sexkanten är den heligaste geometriska formen"],
+        "ULRICEHAMN": ["– för att åka längdskidor på asfalten", "– undersök friktionen mellan byxa och pulkabacke", "– varning för branta backar och plötslig mjölksyra"],
+        "SANDARED": ["– för att beräkna sandkornens totala densitet", "– dags att bygga sandslott i stormvind", "– simfötter och skyddsglasögon rekommenderas"],
+        "HERRLJUNGA": ["– dags att provsmaka 40 liter äppelcider", "– analysera ciderns koldioxidbubblor i mikroskop", "– för att byta tåg... igen", "– se upp för fallande äpplen från skyn"],
+        "VARBERG": ["– för att mäta havets salthalt med tungan", "– perfekt för en fältstudie i måsars störtflygning", "– dags att surfa på en bräda gjord av ost", "– fästningens murar behöver inspekteras"],
+        "ÖXNERED": ["– 'Lilla Paris' behöver fler baguetter", "– för att leta efter det mytomspunna Vänern-odjuret", "– dags att mäta vattenståndet med tumstock"],
+        "VÄNERSBORG": ["– 'Lilla Paris' behöver fler baguetter", "– för att leta efter det mytomspunna Vänern-odjuret", "– dags att mäta vattenståndet med tumstock"],
+        "HORRED": ["– dags att väva en matta av halländskt gräs", "– varning för plötsliga skurar av garn", "– för att studera hur snabbt en traktor faktiskt kan åka"],
+        "VEDDIGE": ["– för att spela ishockey på gräs", "– den halländska gränsen är nådd!", "– dags att undersöka kornas matsmältning"],
+        "SVANEHOLM": ["– för att infiltrera svanarnas hemliga bas", "– dags att bygga en flotte av vass och tejp", "– medtag egen fjäderboa för kamouflage"],
+        "GÄLLSTAD": ["– för att testa elasticiteten i 100 par byxor", "– trikå-paradiset kallar!", "– ett ypperligt tillfälle att köpa kläder tills du spricker"],
+        "ERIKSTORP": ["– dags att undersöka om bollarna faktiskt byggs här", "– för att testa baklängesgång genom byn", "– perfekt aerodynamik för drakflygning från fjället"],
+        "BOLLEBYGD": ["– dags att undersöka om bollarna faktiskt byggs här", "– för att testa baklängesgång genom byn", "– perfekt aerodynamik för drakflygning från fjället"],
+        "LÄNGHEM": ["– dags att spökjaga med värmekamera på Torpa", "– för att mäta exakt hur 'långt hem' det faktiskt är", "– testa hållfastheten i medeltida stenmurar", "– ett utmärkt tillfälle för ett djupdyk i Åsunden"],
+        "KALMAR C": ["– för att bygga ett slott av kroppkakor", "– dags att leta efter den försvunna unionen", "– dags att testa brons aerodynamik i sidvind", "– undersök hur många Gustav Vasa-kopior som ryms på slottet"],
+        "KALMAR": ["– för att bygga ett slott av kroppkakor", "– dags att leta efter den försvunna unionen", "– dags att testa brons aerodynamik i sidvind", "– undersök hur många Gustav Vasa-kopior som ryms på slottet"]
+    };
+
+    function getEasterEgg(destination) {
+        const destUpper = destination.toUpperCase();
+        if (easterEggs[destUpper]) {
+            const eggs = easterEggs[destUpper];
+            const randomEgg = eggs[Math.floor(Math.random() * eggs.length)];
+            return `<span class="easter-egg">${randomEgg}</span>`;
+        }
+        return "";
     }
-    setInterval(tick, 1000);
+    // ==========================================
 
-    // 3. API LOGIK
-    async function login() {
-        if(accessToken) return true;
+
+    let accessToken = "";
+
+    async function getToken() {
         try {
-            const auth = btoa(V_KEY.trim() + ":" + V_SECRET.trim());
-            const res = await fetch(PROXY + encodeURIComponent("https://ext-api.vasttrafik.se/token"), {
-                method: 'POST', headers: { 'Authorization': 'Basic ' + auth, 'Content-Type': 'application/x-www-form-urlencoded' },
+            const res = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/token'), {
+                method: 'POST',
+                headers: { 'Authorization': 'Basic ' + btoa(V_KEY + ':' + V_SECRET), 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'grant_type=client_credentials'
             });
-            if (res.ok) { const d = await res.json(); accessToken = d.access_token; return true; }
-        } catch (e) {} return false;
+            const data = await res.json();
+            accessToken = data.access_token;
+        } catch (e) { setDebug("Kunde inte hämta nyckel från Västtrafik."); }
     }
 
     async function update() {
-        if(!await login()) return;
+        if (!accessToken) await getToken();
+        if (!accessToken) return;
 
-        // BUSSAR PÅ KARTA (Linje 1)
+        let statusText = "VT OK.";
+
+        // --- 1. HÄMTA SIMONSLAND ---
         try {
-            const resP = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/pr/v4/positions?lowerLeftLat=57.65&lowerLeftLong=12.85&upperRightLat=57.78&upperRightLong=13.05'), { headers: { 'Authorization': 'Bearer ' + accessToken } });
-            const pData = await resP.json();
-            vehicleLayer.clearLayers();
-            pData.forEach(v => {
-                if (v.line) {
-                    // Vi rensar bort allt utom siffror för att fånga "1", "01", "Bus 1" osv.
-                    const lnRaw = v.line.designation || v.line.shortName || v.line.name || "";
-                    const lnClean = lnRaw.toString().replace(/\D/g, ''); 
-                    
-                    if (lnClean === "1") {
+            const urlS = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082035000/departures?limit=100&timeSpan=1440&maxDeparturesPerLineAndDirection=4`;
+            const resS = await fetch(PROXY + encodeURIComponent(urlS), { headers: { 'Authorization': 'Bearer ' + accessToken } });
+            if (resS.ok) {
+                const dataS = await resS.json();
+                const renderBoard = (platform, elId) => {
+                    let html = "", count = 0;
+                    if (dataS.results) {
+                        for (let dep of dataS.results) {
+                            const isA = dep.stopPoint && dep.stopPoint.platform === "A";
+                            const match = platform === "A" ? isA : !isA;
+                            if (match && count < 4) {
+                                html += createRow(dep, false);
+                                count++;
+                            }
+                        }
+                    }
+                    document.getElementById(elId).innerHTML = html || "<div style='padding:10px;'>Inga avgångar funna.</div>";
+                };
+                renderBoard("A", "board-simonsland-in");
+                renderBoard("B", "board-simonsland-out");
+            }
+        } catch (e) {}
+
+        // --- 2. RESECENTRUM (Tåg & Region) ---
+        let combined = [];
+        let tvHasData = false;
+
+        // A. Tåg från Trafikverket 
+        try {
+            const tvXML = `
+                <REQUEST>
+                    <LOGIN authenticationkey='${TV_KEY}' />
+                    <QUERY objecttype='TrainAnnouncement' schemaversion='1.9' orderby='AdvertisedTimeAtLocation asc' limit='20'>
+                        <FILTER>
+                            <AND>
+                                <OR>
+                                    <AND>
+                                        <GT name='AdvertisedTimeAtLocation' value='$dateadd(-00:15:00)' />
+                                        <LT name='AdvertisedTimeAtLocation' value='$dateadd(14:00:00)' />
+                                    </AND>
+                                    <GT name='EstimatedTimeAtLocation' value='$now' />
+                                </OR>
+                                <EQ name='LocationSignature' value='Bs' />
+                                <EQ name='ActivityType' value='Avgang' />
+                            </AND>
+                        </FILTER>
+                        <INCLUDE>InformationOwner</INCLUDE>
+                        <INCLUDE>AdvertisedTimeAtLocation</INCLUDE>
+                        <INCLUDE>EstimatedTimeAtLocation</INCLUDE>
+                        <INCLUDE>TrackAtLocation</INCLUDE>
+                        <INCLUDE>ToLocation</INCLUDE>
+                        <INCLUDE>ProductInformation</INCLUDE>
+                    </QUERY>
+                </REQUEST>
+            `;
+            
+            const resT = await fetch("https://api.trafikinfo.trafikverket.se/v2/data.json", {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/xml' }, 
+                body: tvXML
+            });
+            
+            if (resT.ok) {
+                const dataT = await resT.json();
+                if (dataT.RESPONSE && dataT.RESPONSE.RESULT[0].TrainAnnouncement) {
+                    const trains = dataT.RESPONSE.RESULT[0].TrainAnnouncement;
+                    if (trains.length > 0) {
+                        tvHasData = true;
+                        statusText += ` TV Laddat.`;
+                        trains.forEach(t => {
+                            const rowHtml = createTrainRow(t);
+                            if(rowHtml) combined.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: rowHtml, isTrain: true });
+                        });
+                    }
+                }
+            }
+        } catch (e) {}
+
+        // B. Reserv-tåg från Västtrafik
+        if (!tvHasData) {
+            try {
+                const urlC = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082010000/departures?limit=30&timeSpan=1440`;
+                const resC = await fetch(PROXY + encodeURIComponent(urlC), { headers: { 'Authorization': 'Bearer ' + accessToken } });
+                if (resC.ok) {
+                    const dataC = await resC.json();
+                    if (dataC.results) {
+                        dataC.results.forEach(d => {
+                            if (d.serviceJourney && d.serviceJourney.line) {
+                                const isTrain = d.serviceJourney.line.transportMode === 'train' || d.serviceJourney.line.transportMode === 'rail';
+                                if (isTrain) {
+                                    const rowHtml = createRow(d, true);
+                                    if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
+                                }
+                            }
+                        });
+                    }
+                }
+            } catch(e) { }
+        }
+
+        // C. Regionbussar
+        try {
+            const urlB = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082017000/departures?limit=40&timeSpan=1440&maxDeparturesPerLineAndDirection=5`;
+            const resB = await fetch(PROXY + encodeURIComponent(urlB), { headers: { 'Authorization': 'Bearer ' + accessToken } });
+            if (resB.ok) {
+                const dataB = await resB.json();
+                if (dataB.results) {
+                    dataB.results.forEach(d => {
+                        if (d.serviceJourney && d.serviceJourney.line) {
+                            const lineNo = parseInt(d.serviceJourney.line.shortName);
+                            if (lineNo > 31 || isNaN(lineNo)) {
+                                const rowHtml = createRow(d, false);
+                                if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: false });
+                            }
+                        }
+                    });
+                }
+            }
+        } catch(e) {}
+
+        // Sortera allt på tid
+        combined.sort((a,b) => a.t - b.t);
+        
+        let uniqueCombined = [];
+        let prevTime = 0;
+        combined.forEach(item => {
+            if (item.t.getTime() !== prevTime) {
+                uniqueCombined.push(item);
+                prevTime = item.t.getTime();
+            }
+        });
+
+        // Garantera plats för tåg!
+        let rHtml = "";
+        let bCount = 0;
+        let tCount = 0;
+        const totalTrains = uniqueCombined.filter(x => x.isTrain).length;
+        const maxBuses = totalTrains > 0 ? 4 : 7;
+        const limitTime = new Date(new Date().getTime() - 60000); 
+
+        uniqueCombined.forEach(item => {
+            if (item.t > limitTime && (bCount + tCount) < 7) {
+                if (item.isTrain) {
+                    rHtml += item.html;
+                    tCount++;
+                } else if (bCount < maxBuses) {
+                    rHtml += item.html;
+                    bCount++;
+                }
+            }
+        });
+
+        document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
+        setDebug(`${statusText} | Uppdaterad ${new Date().toLocaleTimeString('sv-SE')}`);
+
+        // --- 3. KARTAN ---
+        try {
+            const resP = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/pr/v4/positions?lowerLeftLat=57.71&lowerLeftLong=12.91&upperRightLat=57.74&upperRightLong=12.96'), {
+                headers: { 'Authorization': 'Bearer ' + accessToken }
+            });
+            if (resP.ok) {
+                const pData = await resP.json();
+                vehicleLayer.clearLayers();
+                pData.forEach(v => {
+                    if (v.latitude && v.line) {
+                        let label = v.line.shortName || v.line.designation || v.line.name || "?";
                         L.marker([v.latitude, v.longitude], {
-                            icon: L.divIcon({ className: '', html: `<div class="bus-marker"><i class="fa-solid fa-bus"></i></div>`, iconSize: [32, 32], iconAnchor: [16, 16] })
+                            icon: L.divIcon({ className: '', html: `<div style="background:${v.line.backgroundColor || '#49a441'}; color:white; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:900; border:2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${label}</div>` })
                         }).addTo(vehicleLayer);
                     }
-                }
-            });
-        } catch(e) {}
-
-        // SIMONSLAND LISTOR
-        try {
-            const resS = await fetch(PROXY + encodeURIComponent(`https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082035000/departures?limit=30`), { headers: { 'Authorization': 'Bearer ' + accessToken } });
-            const dS = await resS.json();
-            const fill = (plat, id) => {
-                let h = ""; let c = 0;
-                dS.results?.forEach(i => {
-                    if (i.stopPoint?.platform?.trim().toUpperCase() === plat && c < 5) {
-                        const diff = Math.round((new Date(i.estimatedTime || i.plannedTime) - new Date()) / 60000);
-                        h += `<div class="departure-row"><div class="line-badge" style="background:${i.serviceJourney.line.backgroundColor || '#333'}">${i.serviceJourney.line.shortName}</div><div class="dest-wrapper"><div class="destination">MOT ${i.serviceJourney.direction.split(',')[0]}</div><div class="platform">Läge ${i.stopPoint.platform}</div></div><div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span></div></div>`;
-                        c++;
-                    }
                 });
-                document.getElementById(id).innerHTML = h || "Inga bussar.";
-            };
-            fill("A", "board-simonsland-in"); fill("B", "board-simonsland-out");
-        } catch(e) {}
-
-        // RESECENTRUM TÅG/REGION
-        let combined = [];
-        try {
-            // Tåg från Trafikverket
-            const xml = `<REQUEST><LOGIN authenticationkey='${TV_KEY}'/><QUERY objecttype='TrainAnnouncement' schemaversion='1.9' orderby='AdvertisedTimeAtLocation asc'><FILTER><AND><OR><EQ name='LocationSignature' value='Bs'/><EQ name='LocationSignature' value='Bsc'/></OR><EQ name='ActivityType' value='Avgang'/><GT name='AdvertisedTimeAtLocation' value='$dateadd(-00:10:00)'/></AND></FILTER></QUERY></REQUEST>`;
-            const resT = await fetch("https://api.trafikinfo.trafikverket.se/v2/data.json", { method: 'POST', body: xml });
-            const dataT = await resT.json();
-            dataT.RESPONSE.RESULT[0].TrainAnnouncement?.forEach(t => {
-                const diff = Math.round((new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation) - new Date()) / 60000);
-                let dRaw = t.ToLocation ? t.ToLocation[0].LocationName.toUpperCase() : "OKÄND";
-                combined.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: `<div class="departure-row" style="border-right-color:#607d8b"><div class="line-badge" style="background:#607d8b; font-size:0.75rem;">TÅG</div><div class="dest-wrapper"><div class="destination">MOT ${stationMap[dRaw] || dRaw}</div><div class="platform">Spår ${t.TrackAtLocation || '-'}</div></div><div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span></div></div>` });
-            });
-
-            // Regionbussar från Västtrafik
-            const resB = await fetch(PROXY + encodeURIComponent(`https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082017000/departures?limit=30`), { headers: { 'Authorization': 'Bearer ' + accessToken } });
-            const dB = await resB.json();
-            dB.results?.forEach(i => {
-                const ln = parseInt(i.serviceJourney.line.shortName);
-                if ((ln > 31 || isNaN(ln)) && i.serviceJourney.line.transportMode !== 'train') {
-                    const diff = Math.round((new Date(i.estimatedTime || i.plannedTime) - new Date()) / 60000);
-                    combined.push({ t: new Date(i.estimatedTime || i.plannedTime), html: `<div class="departure-row"><div class="line-badge" style="background:#1D1D1B">${i.serviceJourney.line.shortName}</div><div class="dest-wrapper"><div class="destination">MOT ${i.serviceJourney.direction.split(',')[0]}</div><div class="platform">Läge ${i.stopPoint.platform}</div></div><div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span></div></div>` });
-                }
-            });
-            combined.sort((a,b) => a.t - b.t);
-            document.getElementById('board-resecentrum').innerHTML = combined.slice(0, 10).map(c => c.html).join('');
+            }
         } catch(e) {}
     }
 
+    // --- HTML BYGGARE MED EASTER EGGS ---
+    function createRow(d, isTrainStyle) {
+        try {
+            const diff = Math.round((new Date(d.estimatedTime || d.plannedTime) - new Date()) / 60000);
+            let name = d.serviceJourney.line.shortName || d.serviceJourney.line.designation || "BUSS";
+            let bg = d.serviceJourney.line.backgroundColor || "#333";
+            let dest = d.serviceJourney.direction ? d.serviceJourney.direction.split(',')[0] : "OKÄND";
+            const plat = d.stopPoint && d.stopPoint.platform ? d.stopPoint.platform : "-";
+            
+            // Kolla om destinationen har ett easter egg!
+            const egg = getEasterEgg(dest);
+            
+            if (isTrainStyle) {
+                return `<div class="departure-row" style="border-right-color:#607d8b">
+                    <div class="line-badge" style="background:#607d8b; font-size:0.75rem; text-align:center; padding: 2px; line-height:1;">VÄSTTÅG</div>
+                    <div class="dest-wrapper">
+                        <div class="destination">MOT ${dest}${egg}</div>
+                        <div class="platform">Spår ${plat}</div>
+                    </div>
+                    <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
+                </div>`;
+            }
+
+            return `<div class="departure-row">
+                <div class="line-badge" style="background:${bg}">${name}</div>
+                <div class="dest-wrapper">
+                    <div class="destination">MOT ${dest}${egg}</div>
+                    <div class="platform">Läge ${plat}</div>
+                </div>
+                <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
+            </div>`;
+        } catch(err) { return ""; }
+    }
+
+    function createTrainRow(t) {
+        try {
+            const timeStr = t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation;
+            if (!timeStr) return "";
+            
+            const diff = Math.round((new Date(timeStr) - new Date()) / 60000);
+            
+            // Trafikverkets databas-översättning, KAC översätts snyggt till KALMAR C
+            const stations = { 'G': 'GÖTEBORG C', 'HR': 'HERRLJUNGA', 'VV': 'VARBERG', 'UV': 'UDDEVALLA', 'KAC': 'KALMAR C', 'VÖ': 'VÄXJÖ' };
+            
+            let destCode = "OKÄND";
+            if (t.ToLocation && t.ToLocation.length > 0) {
+                if (typeof t.ToLocation[0] === 'string') destCode = t.ToLocation[0];
+                else if (t.ToLocation[0].LocationName) destCode = t.ToLocation[0].LocationName;
+            }
+            
+            // Översätt koden (T.ex. från KAC till KALMAR C)
+            const dest = stations[destCode.toUpperCase()] || destCode;
+            
+            // Hämta easter egg för den översatta staden
+            const egg = getEasterEgg(dest);
+            
+            let op = "TÅG";
+            if (t.ProductInformation && t.ProductInformation.length > 0 && t.ProductInformation[0].Description) {
+                op = t.ProductInformation[0].Description.substring(0,6).toUpperCase();
+            } else if (t.InformationOwner) {
+                op = t.InformationOwner.substring(0,6).toUpperCase();
+            }
+            
+            const plat = t.TrackAtLocation || '-';
+            
+            return `<div class="departure-row" style="border-right-color:#607d8b">
+                <div class="line-badge" style="background:#607d8b; font-size:0.75rem; text-align:center; padding: 2px; line-height:1;">${op}</div>
+                <div class="dest-wrapper">
+                    <div class="destination">MOT ${dest}${egg}</div>
+                    <div class="platform">Spår ${plat}</div>
+                </div>
+                <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
+            </div>`;
+        } catch(err) { return ""; }
+    }
+
+    function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'}); }
+    
+    // STARTSEKVENS
+    updateClock();
+    setInterval(updateClock, 1000);
+    setInterval(update, 60000); 
+    setTimeout(() => { map.invalidateSize(); }, 500);
     update();
 </script>
 </body>
