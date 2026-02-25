@@ -148,19 +148,17 @@
     // TURIST-ÖVERSÄTTNINGAR AV HÅLLPLATSER
     // ==========================================
     function translateTouristDestinations(dest) {
+        if (!dest) return "OKÄND";
         let dUpper = dest.toUpperCase();
         
-        // Fånga upp "Hässleholmen via Sjukhuset" (både rättstavad och eventuell felstavning från Västtrafik)
         if ((dUpper.includes("HÄSSLEHOLMEN") || dUpper.includes("HÄSLLEHOLMEN")) && dUpper.includes("SJUKHUSET")) {
             return "CENTRUM";
         }
-        
-        // Fånga upp "Sjöbo"
-        if (dUpper === "SJÖBO") {
+        if (dUpper.includes("SJÖBO")) {
             return "KNALLELAND";
         }
         
-        return dest; // Lämna orörd om ingen regel matchar
+        return dest; 
     }
 
     // ==========================================
@@ -198,6 +196,8 @@
         "DALSJÖFORS": ["– för att bada i Dalsjön tills du utvecklar gälar", "– dags att mäta vattenkvaliteten i Dalsjön", "– för att leta efter textiliernas försvunna guldålder"],
         "VRALEN": ["– dags att utforska skogarnas mystik", "– perfekt plats för en hemlig trädkoja", "– för att studera den lokala mossans tillväxt", "– glöm inte kompassen och fältbiolog-kepsen"],
         "VRÅLEN": ["– dags att utforska skogarnas mystik", "– perfekt plats för en hemlig trädkoja", "– för att studera den lokala mossans tillväxt", "– glöm inte kompassen och fältbiolog-kepsen"],
+        "CENTRUM": ["– dags att uppleva stadens puls", "– varning för intensiv shopping", "– navigera försiktigt bland rondellerna"],
+        "KNALLELAND": ["– dags att fynda loss bland butikerna", "– varning för överfulla shoppingkassar", "– för att inspektera Knalle-historien närmare"],
         "BORÅS_LOKAL": [
             "– glöm inte paraplyet, det är ju Borås!", "– dags att räkna hur många rondeller vi passerar",
             "– staden där regn är en accepterad livsstil", "– utmärkt väder för att testa nya gummistövlar",
@@ -229,30 +229,40 @@
 
     async function getToken() {
         try {
+            setDebug("Hämtar nyckel från Västtrafik...");
             const res = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/token'), {
                 method: 'POST',
                 headers: { 'Authorization': 'Basic ' + btoa(V_KEY + ':' + V_SECRET), 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'grant_type=client_credentials'
             });
+            if (!res.ok) throw new Error("Blockerad av Proxy (" + res.status + ")");
             const data = await res.json();
             accessToken = data.access_token;
-        } catch (e) { setDebug("Kunde inte hämta nyckel från Västtrafik."); }
+            setDebug("System startar...");
+        } catch (e) { 
+            setDebug("Fel vid inloggning: " + e.message + " (Vänta 2 min)"); 
+            accessToken = ""; 
+        }
     }
 
     async function update() {
-        timeToUpdate = 30;
-
-        if (!accessToken) await getToken();
-        if (!accessToken) return;
-
-        let statusText = "Tavlor OK.";
-        let tvTågAntal = 0;
-        let vtTågAntal = 0;
-
-        // --- 1. HÄMTA SIMONSLAND ---
         try {
+            timeToUpdate = 30;
+
+            if (!accessToken) await getToken();
+            if (!accessToken) return; // Stoppar koden snyggt om proxyn blockar, skärmen fryser ej utan väntar!
+
+            let statusText = "Tavlor OK.";
+            let tvTågAntal = 0;
+            let vtTågAntal = 0;
+
+            // --- 1. HÄMTA SIMONSLAND ---
             const urlS = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082035000/departures?limit=100&timeSpan=1440&maxDeparturesPerLineAndDirection=4`;
             const resS = await fetch(PROXY + encodeURIComponent(urlS), { headers: { 'Authorization': 'Bearer ' + accessToken } });
+            
+            // Om nyckeln gått ut (401), nollställ så vi hämtar en ny nästa varv
+            if (resS.status === 401) { accessToken = ""; throw new Error("Nyckel utgången"); }
+            
             if (resS.ok) {
                 const dataS = await resS.json();
                 const renderBoard = (platform, elId) => {
@@ -272,6 +282,255 @@
                 renderBoard("A", "board-simonsland-in");
                 renderBoard("B", "board-simonsland-out");
             }
-        } catch (e) {}
 
-        // --- 2. RESECENTRUM (Tåg & Region
+            // --- 2. RESECENTRUM (Tåg & Region) ---
+            let combined = [];
+            let tvHasData = false;
+
+            // A. Tåg från Trafikverket 
+            try {
+                const tvXML = `
+                    <REQUEST>
+                        <LOGIN authenticationkey='${TV_KEY}' />
+                        <QUERY objecttype='TrainAnnouncement' schemaversion='1.8' orderby='AdvertisedTimeAtLocation asc' limit='20'>
+                            <FILTER>
+                                <AND>
+                                    <EQ name='LocationSignature' value='Bs' />
+                                    <EQ name='ActivityType' value='Avgang' />
+                                    <OR>
+                                        <AND>
+                                            <GT name='AdvertisedTimeAtLocation' value='$dateadd(-00:15:00)' />
+                                            <LT name='AdvertisedTimeAtLocation' value='$dateadd(14:00:00)' />
+                                        </AND>
+                                        <GT name='EstimatedTimeAtLocation' value='$now' />
+                                    </OR>
+                                </AND>
+                            </FILTER>
+                            <INCLUDE>InformationOwner</INCLUDE>
+                            <INCLUDE>AdvertisedTimeAtLocation</INCLUDE>
+                            <INCLUDE>EstimatedTimeAtLocation</INCLUDE>
+                            <INCLUDE>TrackAtLocation</INCLUDE>
+                            <INCLUDE>ToLocation</INCLUDE>
+                            <INCLUDE>ProductInformation</INCLUDE>
+                        </QUERY>
+                    </REQUEST>
+                `;
+                
+                const resT = await fetch("https://api.trafikinfo.trafikverket.se/v2/data.json", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/xml' }, 
+                    body: tvXML
+                });
+                
+                if (resT.ok) {
+                    const dataT = await resT.json();
+                    if (dataT.RESPONSE && dataT.RESPONSE.RESULT[0].TrainAnnouncement) {
+                        const trains = dataT.RESPONSE.RESULT[0].TrainAnnouncement;
+                        if (trains.length > 0) {
+                            tvHasData = true;
+                            tvTågAntal = trains.length;
+                            trains.forEach(t => {
+                                const rowHtml = createTrainRow(t);
+                                if(rowHtml) combined.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: rowHtml, isTrain: true });
+                            });
+                        }
+                    }
+                }
+            } catch (e) {}
+
+            // B. Reserv-tåg från Västtrafik
+            if (!tvHasData) {
+                try {
+                    const urlC = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082010000/departures?limit=30&timeSpan=1440`;
+                    const resC = await fetch(PROXY + encodeURIComponent(urlC), { headers: { 'Authorization': 'Bearer ' + accessToken } });
+                    if (resC.ok) {
+                        const dataC = await resC.json();
+                        if (dataC.results) {
+                            dataC.results.forEach(d => {
+                                const rowHtml = createRow(d, true, true); 
+                                if(rowHtml) {
+                                    combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
+                                    vtTågAntal++;
+                                }
+                            });
+                        }
+                    }
+                } catch(e) { }
+            }
+
+            // C. Regionbussar från Resecentrum
+            try {
+                const urlB = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082017000/departures?limit=50&timeSpan=1440&maxDeparturesPerLineAndDirection=5`;
+                const resB = await fetch(PROXY + encodeURIComponent(urlB), { headers: { 'Authorization': 'Bearer ' + accessToken } });
+                if (resB.ok) {
+                    const dataB = await resB.json();
+                    if (dataB.results) {
+                        dataB.results.forEach(d => {
+                            if (d.serviceJourney && d.serviceJourney.line) {
+                                const lineNo = parseInt(d.serviceJourney.line.shortName);
+                                if (lineNo > 31 || isNaN(lineNo)) {
+                                    const rowHtml = createRow(d, false, true); 
+                                    if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: false });
+                                }
+                            }
+                        });
+                    }
+                }
+            } catch(e) {}
+
+            // Sortera allt på tid
+            combined.sort((a,b) => a.t - b.t);
+            
+            let uniqueCombined = [];
+            let prevTime = 0;
+            combined.forEach(item => {
+                if (item.t.getTime() !== prevTime) {
+                    uniqueCombined.push(item);
+                    prevTime = item.t.getTime();
+                }
+            });
+
+            const limitTime = new Date(new Date().getTime() - 60000); 
+            let futureItems = uniqueCombined.filter(item => item.t > limitTime);
+            let futureTrainsCount = futureItems.filter(item => item.isTrain).length;
+            
+            const MAX_TOTAL = 12;
+            let maxBusesAllowed = MAX_TOTAL - futureTrainsCount;
+            if (maxBusesAllowed < 0) maxBusesAllowed = 0;
+
+            let rHtml = "";
+            let bCount = 0;
+            let tCount = 0;
+
+            futureItems.forEach(item => {
+                if ((bCount + tCount) < MAX_TOTAL) {
+                    if (item.isTrain) {
+                        rHtml += item.html;
+                        tCount++;
+                    } else {
+                        if (bCount < maxBusesAllowed) {
+                            rHtml += item.html;
+                            bCount++;
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
+            setDebug(`${statusText} TV: ${tvTågAntal}, VT: ${vtTågAntal}`);
+
+            // --- 3. KARTAN ---
+            try {
+                const resP = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/pr/v4/positions?lowerLeftLat=57.71&lowerLeftLong=12.91&upperRightLat=57.74&upperRightLong=12.96'), {
+                    headers: { 'Authorization': 'Bearer ' + accessToken }
+                });
+                if (resP.ok) {
+                    const pData = await resP.json();
+                    vehicleLayer.clearLayers();
+                    pData.forEach(v => {
+                        if (v.latitude && v.line) {
+                            let label = v.line.shortName || v.line.designation || v.line.name || "?";
+                            if (label === "1") {
+                                L.marker([v.latitude, v.longitude], {
+                                    icon: L.divIcon({ className: '', html: `<div style="background:${v.line.backgroundColor || '#49a441'}; color:white; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:900; border:2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${label}</div>` })
+                                }).addTo(vehicleLayer);
+                            }
+                        }
+                    });
+                }
+            } catch(e) {}
+
+            setTimeout(() => { map.invalidateSize(); map.setView(NAVET_ENTRE, 15.5); }, 100);
+
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // --- HTML BYGGARE ---
+    function createRow(d, isTrainStyle, isRightColumn) {
+        try {
+            const diff = Math.round((new Date(d.estimatedTime || d.plannedTime) - new Date()) / 60000);
+            let name = d.serviceJourney.line.shortName || d.serviceJourney.line.designation || "BUSS";
+            let bg = d.serviceJourney.line.backgroundColor || "#333";
+            
+            let rawDest = d.serviceJourney.direction ? d.serviceJourney.direction.split(',')[0].trim() : "OKÄND";
+            let dest = translateTouristDestinations(rawDest);
+            
+            const plat = d.stopPoint && d.stopPoint.platform ? d.stopPoint.platform : "-";
+            
+            const isLocalBus = !isRightColumn;
+            const egg = getEasterEgg(dest, isLocalBus);
+            
+            if (isTrainStyle) {
+                return `<div class="departure-row" style="border-right-color:#666666">
+                    <div class="line-badge" style="background:#666666; font-size:0.75rem; text-align:center; padding: 2px; line-height:1;">VÄSTTÅG</div>
+                    <div class="dest-wrapper">
+                        <div class="destination">MOT ${dest}${egg}</div>
+                        <div class="platform">Spår ${plat}</div>
+                    </div>
+                    <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
+                </div>`;
+            }
+
+            if (isRightColumn) { bg = "#000000"; }
+
+            return `<div class="departure-row">
+                <div class="line-badge" style="background:${bg}">${name}</div>
+                <div class="dest-wrapper">
+                    <div class="destination">MOT ${dest}${egg}</div>
+                    <div class="platform">Läge ${plat}</div>
+                </div>
+                <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
+            </div>`;
+        } catch(err) { return ""; }
+    }
+
+    function createTrainRow(t) {
+        try {
+            const timeStr = t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation;
+            if (!timeStr) return "";
+            
+            const diff = Math.round((new Date(timeStr) - new Date()) / 60000);
+            const stations = { 'G': 'GÖTEBORG C', 'HR': 'HERRLJUNGA', 'VV': 'VARBERG', 'UV': 'UDDEVALLA', 'KAC': 'KALMAR C', 'VÖ': 'VÄXJÖ' };
+            
+            let destCode = "OKÄND";
+            if (t.ToLocation && t.ToLocation.length > 0) {
+                if (typeof t.ToLocation[0] === 'string') destCode = t.ToLocation[0];
+                else if (t.ToLocation[0].LocationName) destCode = t.ToLocation[0].LocationName;
+            }
+            const dest = stations[destCode.toUpperCase()] || destCode;
+            
+            const egg = getEasterEgg(dest, false);
+            
+            let op = "TÅG";
+            if (t.ProductInformation && t.ProductInformation.length > 0 && t.ProductInformation[0].Description) {
+                op = t.ProductInformation[0].Description.substring(0,6).toUpperCase();
+            } else if (t.InformationOwner) {
+                op = t.InformationOwner.substring(0,6).toUpperCase();
+            }
+            
+            const plat = t.TrackAtLocation || '-';
+            
+            return `<div class="departure-row" style="border-right-color:#666666">
+                <div class="line-badge" style="background:#666666; font-size:0.75rem; text-align:center; padding: 2px; line-height:1;">${op}</div>
+                <div class="dest-wrapper">
+                    <div class="destination">MOT ${dest}${egg}</div>
+                    <div class="platform">Spår ${plat}</div>
+                </div>
+                <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
+            </div>`;
+        } catch(err) { return ""; }
+    }
+
+    function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'}); }
+    
+    updateClock();
+    setInterval(updateClock, 1000);
+    setInterval(update, 30000); 
+    
+    setTimeout(() => { map.invalidateSize(); map.setView(NAVET_ENTRE, 15.5); }, 500);
+    update();
+</script>
+</body>
+</html>
