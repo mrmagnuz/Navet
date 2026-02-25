@@ -22,7 +22,7 @@
         .header-title { font-size: 1.6rem; font-weight: 900; text-transform: uppercase; }
         #clock { font-size: 2.5rem; font-weight: 900; }
         
-        /* NY LAYOUT: Delad skärm */
+        /* LAYOUT: Delad skärm */
         .main-content {
             display: flex; flex-grow: 1; padding: 15px 20px; gap: 20px; overflow: hidden;
         }
@@ -107,7 +107,7 @@
 <footer>
     <div>UPPLEV. LÄR. UTFORSKA.</div>
     <div id="status-area">
-        <span id="countdown-timer">Uppdaterar om: 60s</span>
+        <span id="countdown-timer">Uppdaterar om: 30s</span>
         <span style="opacity: 0.3;">|</span>
         <span id="debug-log">System startar...</span>
     </div>
@@ -124,10 +124,10 @@
     function setDebug(msg) { document.getElementById('debug-log').innerText = msg; }
 
     // --- NEDRÄKNINGSTIMER ---
-    let timeToUpdate = 60;
+    let timeToUpdate = 30; // Uppdaterad till 30 sekunder
     setInterval(() => {
         timeToUpdate--;
-        if (timeToUpdate < 0) timeToUpdate = 60;
+        if (timeToUpdate < 0) timeToUpdate = 30;
         document.getElementById('countdown-timer').innerText = `Uppdaterar om: ${timeToUpdate}s`;
     }, 1000);
 
@@ -175,9 +175,12 @@
         "GÄLLSTAD": ["– för att testa elasticiteten i 100 par byxor", "– trikå-paradiset kallar!", "– ett ypperligt tillfälle att köpa kläder tills du spricker"],
         "ERIKSTORP": ["– dags att undersöka om bollarna faktiskt byggs här", "– för att testa baklängesgång genom byn", "– perfekt aerodynamik för drakflygning från fjället"],
         "BOLLEBYGD": ["– dags att undersöka om bollarna faktiskt byggs här", "– för att testa baklängesgång genom byn", "– perfekt aerodynamik för drakflygning från fjället"],
+        "ERIKSTORP VIA BOLLEBYGD": ["– dags att undersöka om bollarna faktiskt byggs här", "– för att testa baklängesgång genom byn", "– perfekt aerodynamik för drakflygning från fjället", "– en noggrant uträknad omväg för vetenskapens skull"],
         "LÄNGHEM": ["– dags att spökjaga med värmekamera på Torpa", "– för att mäta exakt hur 'långt hem' det faktiskt är", "– testa hållfastheten i medeltida stenmurar", "– ett utmärkt tillfälle för ett djupdyk i Åsunden"],
         "KALMAR C": ["– för att bygga ett slott av kroppkakor", "– dags att leta efter den försvunna unionen", "– dags att testa brons aerodynamik i sidvind", "– undersök hur många Gustav Vasa-kopior som ryms på slottet"],
-        "KALMAR": ["– för att bygga ett slott av kroppkakor", "– dags att leta efter den försvunna unionen", "– dags att testa brons aerodynamik i sidvind", "– undersök hur många Gustav Vasa-kopior som ryms på slottet"]
+        "KALMAR": ["– för att bygga ett slott av kroppkakor", "– dags att leta efter den försvunna unionen", "– dags att testa brons aerodynamik i sidvind", "– undersök hur många Gustav Vasa-kopior som ryms på slottet"],
+        "ALINGSÅS": ["– varning: extrem risk för överfika", "– dags att räkna exakt hur många potatisar som ryms i en säck", "– medtag egen medhavd finkaffekopp", "– där ljuset i tunneln är en årlig festival"],
+        "DALSJÖFORS": ["– för att bada i Dalsjön tills du utvecklar gälar", "– dags att mäta vattenkvaliteten i Dalsjön", "– för att leta efter textiliernas försvunna guldålder"]
     };
 
     function getEasterEgg(destination) {
@@ -206,7 +209,7 @@
 
     async function update() {
         // Återställ nedräkning visuellt så system och skärm synkar
-        timeToUpdate = 60;
+        timeToUpdate = 30;
 
         if (!accessToken) await getToken();
         if (!accessToken) return;
@@ -228,7 +231,7 @@
                             const isA = dep.stopPoint && dep.stopPoint.platform === "A";
                             const match = platform === "A" ? isA : !isA;
                             if (match && count < 4) {
-                                html += createRow(dep, false, false); // isRightColumn = false
+                                html += createRow(dep, false, false); 
                                 count++;
                             }
                         }
@@ -298,7 +301,7 @@
                     const dataC = await resC.json();
                     if (dataC.results) {
                         dataC.results.forEach(d => {
-                            const rowHtml = createRow(d, true, true); // forceTrainStyle=true, isRightColumn=true
+                            const rowHtml = createRow(d, true, true); 
                             if(rowHtml) {
                                 combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
                                 vtTågAntal++;
@@ -319,9 +322,8 @@
                     dataB.results.forEach(d => {
                         if (d.serviceJourney && d.serviceJourney.line) {
                             const lineNo = parseInt(d.serviceJourney.line.shortName);
-                            // Alla bussar över linje 31 är Regionbussar
                             if (lineNo > 31 || isNaN(lineNo)) {
-                                const rowHtml = createRow(d, false, true); // forceTrainStyle=false, isRightColumn=true
+                                const rowHtml = createRow(d, false, true); 
                                 if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: false });
                             }
                         }
@@ -342,15 +344,21 @@
             }
         });
 
-        // Eftersom kolumnen nu är mycket högre, låter vi den visa upp till 13 rader!
+        // Visar upp till 13 rader totalt.
         let rHtml = "";
-        let totalCount = 0;
+        let bCount = 0;
+        let tCount = 0;
         const limitTime = new Date(new Date().getTime() - 60000); 
 
         uniqueCombined.forEach(item => {
-            if (item.t > limitTime && totalCount < 13) {
-                rHtml += item.html;
-                totalCount++;
+            if (item.t > limitTime && (bCount + tCount) < 13) {
+                if (item.isTrain) {
+                    rHtml += item.html;
+                    tCount++;
+                } else if (bCount < 6) { // Max 6 bussar för att säkerställa plats åt tåg i listan
+                    rHtml += item.html;
+                    bCount++;
+                }
             }
         });
 
@@ -368,8 +376,6 @@
                 pData.forEach(v => {
                     if (v.latitude && v.line) {
                         let label = v.line.shortName || v.line.designation || v.line.name || "?";
-                        
-                        // FILTRERA SÅ BARA LINJE 1 SYNS
                         if (label === "1") {
                             L.marker([v.latitude, v.longitude], {
                                 icon: L.divIcon({ className: '', html: `<div style="background:${v.line.backgroundColor || '#49a441'}; color:white; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:900; border:2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${label}</div>` })
@@ -382,7 +388,6 @@
     }
 
     // --- HTML BYGGARE ---
-    // Ny parameter "isRightColumn" styr om bussarna ska tvångs-färgas svarta.
     function createRow(d, isTrainStyle, isRightColumn) {
         try {
             const diff = Math.round((new Date(d.estimatedTime || d.plannedTime) - new Date()) / 60000);
@@ -404,7 +409,6 @@
                 </div>`;
             }
 
-            // Regionbussar i högra kolumnen tvingas till svart bakgrundsfärg!
             if (isRightColumn) {
                 bg = "#000000";
             }
@@ -446,7 +450,6 @@
             
             const plat = t.TrackAtLocation || '-';
             
-            // Trafikverket Tåg får grå fyrkant (#666666) och grå ramkant
             return `<div class="departure-row" style="border-right-color:#666666">
                 <div class="line-badge" style="background:#666666; font-size:0.75rem; text-align:center; padding: 2px; line-height:1;">${op}</div>
                 <div class="dest-wrapper">
@@ -460,10 +463,9 @@
 
     function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'}); }
     
-    // STARTSEKVENS
     updateClock();
     setInterval(updateClock, 1000);
-    setInterval(update, 60000); 
+    setInterval(update, 30000); // 30 SEKUNDER UPPDATERING!
     setTimeout(() => { map.invalidateSize(); }, 500);
     update();
 </script>
