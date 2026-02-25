@@ -132,7 +132,6 @@
     const STOP_SIMONSLAND = [57.72557, 12.93841];
     const STOP_RESECENTRUM = [57.720733, 12.932754];
 
-    // ZOOM ÄNDRAD TILL 14.5 (Ett steg ut)
     const map = L.map('map', { zoomControl: false }).setView(NAVET_ENTRE, 14.5);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
@@ -145,26 +144,14 @@
 
     const vehicleLayer = L.layerGroup().addTo(map);
 
-    // ==========================================
-    // TURIST-ÖVERSÄTTNINGAR AV HÅLLPLATSER
-    // ==========================================
     function translateTouristDestinations(dest) {
         if (!dest) return "OKÄND";
         let dUpper = dest.toUpperCase();
-        
-        if ((dUpper.includes("HÄSSLEHOLMEN") || dUpper.includes("HÄSLLEHOLMEN")) && dUpper.includes("SJUKHUSET")) {
-            return "CENTRUM";
-        }
-        if (dUpper.includes("SJÖBO")) {
-            return "KNALLELAND";
-        }
-        
+        if ((dUpper.includes("HÄSSLEHOLMEN") || dUpper.includes("HÄSLLEHOLMEN")) && dUpper.includes("SJUKHUSET")) return "CENTRUM";
+        if (dUpper.includes("SJÖBO")) return "KNALLELAND";
         return dest; 
     }
 
-    // ==========================================
-    // NAVETS HEMLIGA EASTER EGGS 
-    // ==========================================
     const easterEggs = {
         "GÖTEBORG": ["– för att leta efter Glenn", "– dags att beräkna vindmotståndet på Avenyn", "– medtag egen paraply-krockkudde", "– ett utmärkt tillfälle att räkna spårvagnar"],
         "GÖTEBORG C": ["– för att leta efter Glenn", "– dags att beräkna vindmotståndet på Avenyn", "– medtag egen paraply-krockkudde", "– ett utmärkt tillfälle att räkna spårvagnar"],
@@ -216,12 +203,10 @@
     function getEasterEgg(destination, isLocalBus) {
         const destUpper = destination.toUpperCase();
         if (easterEggs[destUpper]) {
-            const eggs = easterEggs[destUpper];
-            return `<span class="easter-egg">${eggs[Math.floor(Math.random() * eggs.length)]}</span>`;
+            return `<span class="easter-egg">${easterEggs[destUpper][Math.floor(Math.random() * easterEggs[destUpper].length)]}</span>`;
         }
         if (isLocalBus && easterEggs["BORÅS_LOKAL"]) {
-            const eggs = easterEggs["BORÅS_LOKAL"];
-            return `<span class="easter-egg">${eggs[Math.floor(Math.random() * eggs.length)]}</span>`;
+            return `<span class="easter-egg">${easterEggs["BORÅS_LOKAL"][Math.floor(Math.random() * easterEggs["BORÅS_LOKAL"].length)]}</span>`;
         }
         return "";
     }
@@ -230,20 +215,15 @@
 
     async function getToken() {
         try {
-            setDebug("Hämtar nyckel från Västtrafik...");
             const res = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/token'), {
                 method: 'POST',
                 headers: { 'Authorization': 'Basic ' + btoa(V_KEY + ':' + V_SECRET), 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'grant_type=client_credentials'
             });
-            if (!res.ok) throw new Error("Blockerad av Proxy (" + res.status + ")");
+            if (!res.ok) throw new Error("API-nyckel nekad");
             const data = await res.json();
             accessToken = data.access_token;
-            setDebug("System startar...");
-        } catch (e) { 
-            setDebug("Fel vid inloggning: " + e.message + " (Vänta 2 min)"); 
-            accessToken = ""; 
-        }
+        } catch (e) { accessToken = ""; }
     }
 
     async function update() {
@@ -287,38 +267,37 @@
             let combined = [];
             let tvHasData = false;
 
-            // A. Tåg från Trafikverket 
+            // A. Tåg från Trafikverket (RÄTTAT: Text/plain för att döda CORS, och exakt filter)
             try {
-                const tvXML = `
-                    <REQUEST>
-                        <LOGIN authenticationkey='${TV_KEY}' />
-                        <QUERY objecttype='TrainAnnouncement' schemaversion='1.8' orderby='AdvertisedTimeAtLocation asc' limit='20'>
-                            <FILTER>
-                                <AND>
-                                    <EQ name='LocationSignature' value='Bs' />
-                                    <EQ name='ActivityType' value='Avgang' />
-                                    <OR>
-                                        <AND>
-                                            <GT name='AdvertisedTimeAtLocation' value='$dateadd(-00:15:00)' />
-                                            <LT name='AdvertisedTimeAtLocation' value='$dateadd(14:00:00)' />
-                                        </AND>
-                                        <GT name='EstimatedTimeAtLocation' value='$now' />
-                                    </OR>
-                                </AND>
-                            </FILTER>
-                            <INCLUDE>InformationOwner</INCLUDE>
-                            <INCLUDE>AdvertisedTimeAtLocation</INCLUDE>
-                            <INCLUDE>EstimatedTimeAtLocation</INCLUDE>
-                            <INCLUDE>TrackAtLocation</INCLUDE>
-                            <INCLUDE>ToLocation</INCLUDE>
-                            <INCLUDE>ProductInformation</INCLUDE>
-                        </QUERY>
-                    </REQUEST>
-                `;
+                const tvXML = `<REQUEST>
+                    <LOGIN authenticationkey='${TV_KEY}' />
+                    <QUERY objecttype='TrainAnnouncement' schemaversion='1.9' orderby='AdvertisedTimeAtLocation'>
+                        <FILTER>
+                            <AND>
+                                <EQ name='LocationSignature' value='Bs' />
+                                <EQ name='ActivityType' value='Avgang' />
+                                <OR>
+                                    <AND>
+                                        <GT name='AdvertisedTimeAtLocation' value='$dateadd(-00:15:00)' />
+                                        <LT name='AdvertisedTimeAtLocation' value='$dateadd(14:00:00)' />
+                                    </AND>
+                                    <GT name='EstimatedTimeAtLocation' value='$now' />
+                                </OR>
+                            </AND>
+                        </FILTER>
+                        <INCLUDE>InformationOwner</INCLUDE>
+                        <INCLUDE>AdvertisedTimeAtLocation</INCLUDE>
+                        <INCLUDE>EstimatedTimeAtLocation</INCLUDE>
+                        <INCLUDE>TrackAtLocation</INCLUDE>
+                        <INCLUDE>ToLocation</INCLUDE>
+                        <INCLUDE>ProductInformation</INCLUDE>
+                        <INCLUDE>Canceled</INCLUDE>
+                    </QUERY>
+                </REQUEST>`;
                 
                 const resT = await fetch("https://api.trafikinfo.trafikverket.se/v2/data.json", {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/xml' }, 
+                    headers: { 'Content-Type': 'text/plain' }, // Viktigt för att webbläsaren inte ska blockera!
                     body: tvXML
                 });
                 
@@ -328,39 +307,22 @@
                         const trains = dataT.RESPONSE.RESULT[0].TrainAnnouncement;
                         if (trains.length > 0) {
                             tvHasData = true;
-                            tvTågAntal = trains.length;
                             trains.forEach(t => {
+                                if (t.Canceled === true) return; // Håll borta inställda tåg!
                                 const rowHtml = createTrainRow(t);
-                                if(rowHtml) combined.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: rowHtml, isTrain: true });
+                                if(rowHtml) {
+                                    combined.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: rowHtml, isTrain: true });
+                                    tvTågAntal++;
+                                }
                             });
                         }
                     }
                 }
             } catch (e) {}
 
-            // B. Reserv-tåg från Västtrafik
-            if (!tvHasData) {
-                try {
-                    const urlC = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082010000/departures?limit=30&timeSpan=1440`;
-                    const resC = await fetch(PROXY + encodeURIComponent(urlC), { headers: { 'Authorization': 'Bearer ' + accessToken } });
-                    if (resC.ok) {
-                        const dataC = await resC.json();
-                        if (dataC.results) {
-                            dataC.results.forEach(d => {
-                                const rowHtml = createRow(d, true, true); 
-                                if(rowHtml) {
-                                    combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
-                                    vtTågAntal++;
-                                }
-                            });
-                        }
-                    }
-                } catch(e) { }
-            }
-
-            // C. Regionbussar från Resecentrum
+            // B & C. Västtrafik (Regionbussar och Reservtåg)
             try {
-                const urlB = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082017000/departures?limit=50&timeSpan=1440&maxDeparturesPerLineAndDirection=5`;
+                const urlB = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082017000/departures?limit=60&timeSpan=1440&maxDeparturesPerLineAndDirection=5`;
                 const resB = await fetch(PROXY + encodeURIComponent(urlB), { headers: { 'Authorization': 'Bearer ' + accessToken } });
                 if (resB.ok) {
                     const dataB = await resB.json();
@@ -368,7 +330,21 @@
                         dataB.results.forEach(d => {
                             if (d.serviceJourney && d.serviceJourney.line) {
                                 const lineNo = parseInt(d.serviceJourney.line.shortName);
-                                if (lineNo > 31 || isNaN(lineNo)) {
+                                const mode = d.serviceJourney.line.transportMode;
+                                const lineName = d.serviceJourney.line.name ? d.serviceJourney.line.name.toLowerCase() : "";
+                                
+                                let isVtTrain = false;
+                                if (mode === 'train' || mode === 'rail' || lineName.includes('tåg')) isVtTrain = true;
+
+                                if (isVtTrain) {
+                                    if (!tvHasData) { // Tvinga in VT-tåg endast om Trafikverket ligger nere
+                                        const rowHtml = createRow(d, true, true); 
+                                        if(rowHtml) {
+                                            combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
+                                            vtTågAntal++;
+                                        }
+                                    }
+                                } else if (lineNo > 31 || isNaN(lineNo)) {
                                     const rowHtml = createRow(d, false, true); 
                                     if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: false });
                                 }
@@ -417,9 +393,9 @@
             });
 
             document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
-            setDebug(`${statusText} TV: ${tvTågAntal}, VT: ${vtTågAntal}`);
+            setDebug(`${statusText} TV: ${tvTågAntal} st, VT Tåg: ${vtTågAntal} st`);
 
-            // --- 3. KARTAN (NY BUSSIKON + Zomma ut till 14.5) ---
+            // --- 3. KARTAN (Enbart buss-ikon i en snygg cirkel) ---
             try {
                 const resP = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/pr/v4/positions?lowerLeftLat=57.71&lowerLeftLong=12.91&upperRightLat=57.74&upperRightLong=12.96'), {
                     headers: { 'Authorization': 'Bearer ' + accessToken }
@@ -428,8 +404,7 @@
                     const pData = await resP.json();
                     vehicleLayer.clearLayers();
                     
-                    // Liten, fin och modern vit SVG-buss
-                    const busSvg = `<svg style="margin-right:4px; margin-top:-1px;" width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M4 16c0 .88.39 1.67 1 2.22v1.28c0 .83.67 1.5 1.5 1.5S8 20.33 8 19.5V19h8v.5c0 .82.67 1.5 1.5 1.5.82 0 1.5-.67 1.5-1.5v-1.28c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-1.5-6H6V6h12v5z"/></svg>`;
+                    const busSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M4 16c0 .88.39 1.67 1 2.22v1.28c0 .83.67 1.5 1.5 1.5S8 20.33 8 19.5V19h8v.5c0 .82.67 1.5 1.5 1.5.82 0 1.5-.67 1.5-1.5v-1.28c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-1.5-6H6V6h12v5z"/></svg>`;
 
                     pData.forEach(v => {
                         if (v.latitude && v.line) {
@@ -438,9 +413,9 @@
                                 L.marker([v.latitude, v.longitude], {
                                     icon: L.divIcon({ 
                                         className: '', 
-                                        iconSize: [50, 26], // Storlek på piller-rutan
-                                        iconAnchor: [25, 13], // Centrerar pricken exakt över gatan
-                                        html: `<div style="background:${v.line.backgroundColor || '#49a441'}; color:white; width:100%; height:100%; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; border:2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${busSvg}${label}</div>` 
+                                        iconSize: [28, 28], // Perfekt cirkel!
+                                        iconAnchor: [14, 14], 
+                                        html: `<div style="background:${v.line.backgroundColor || '#49a441'}; width:100%; height:100%; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 4px rgba(0,0,0,0.4); border:2px solid white;">${busSvg}</div>` 
                                     })
                                 }).addTo(vehicleLayer);
                             }
@@ -451,9 +426,7 @@
 
             setTimeout(() => { map.invalidateSize(); map.setView(NAVET_ENTRE, 14.5); }, 100);
 
-        } catch (error) {
-            console.error(error);
-        }
+        } catch (error) {}
     }
 
     // --- HTML BYGGARE ---
@@ -509,7 +482,6 @@
                 else if (t.ToLocation[0].LocationName) destCode = t.ToLocation[0].LocationName;
             }
             const dest = stations[destCode.toUpperCase()] || destCode;
-            
             const egg = getEasterEgg(dest, false);
             
             let op = "TÅG";
