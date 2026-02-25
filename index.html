@@ -143,7 +143,10 @@
     L.polyline([NAVET_ENTRE, [57.723437,12.936337], [57.723231,12.936766], [57.722543,12.935414], [57.722016,12.935114], [57.722051,12.934771], [57.72185,12.934277], [57.721134,12.933049], [57.720933,12.932829], STOP_RESECENTRUM], {color: '#1D1D1B', weight: 4, dashArray: '5, 8', opacity: 0.6}).addTo(map);
 
     L.circleMarker(NAVET_ENTRE, { radius: 8, fillColor: "#49a441", color: "#fff", weight: 3, fillOpacity: 1 }).addTo(map).bindTooltip("DU ÄR HÄR", {permanent: true, direction: 'left'});
-    L.circleMarker(STOP_SIMONSLAND, { radius: 6, fillColor: "#1D1D1B", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map).bindTooltip("Simonsland", {permanent: true, direction: 'right'});
+    
+    // Simonsland flyttad till 'left'
+    L.circleMarker(STOP_SIMONSLAND, { radius: 6, fillColor: "#1D1D1B", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map).bindTooltip("Simonsland", {permanent: true, direction: 'left'});
+    
     L.circleMarker(STOP_RESECENTRUM, { radius: 6, fillColor: "#1D1D1B", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map).bindTooltip("Resecentrum", {permanent: true, direction: 'left'});
 
     const vehicleLayer = L.layerGroup().addTo(map);
@@ -263,7 +266,7 @@
         let combined = [];
         let tvHasData = false;
 
-        // A. Tåg från Trafikverket (RÄTTAT TIDSFILTER, EXAKT ENLIGT MANUAL)
+        // A. Tåg från Trafikverket 
         try {
             const tvXML = `
                 <REQUEST>
@@ -314,7 +317,7 @@
             }
         } catch (e) {}
 
-        // B. Reserv-tåg från Västtrafik (Fångar upp ifall TV skulle strejka ändå)
+        // B. Reserv-tåg från Västtrafik 
         if (!tvHasData) {
             try {
                 const urlC = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082010000/departures?limit=30&timeSpan=1440`;
@@ -416,6 +419,12 @@
                 });
             }
         } catch(e) {}
+
+        // TVINGA KARTAN ATT CENTRERAS EFTER ATT LISTORNA LADDAT!
+        setTimeout(() => {
+            map.invalidateSize();
+            map.setView(NAVET_ENTRE, 15.5);
+        }, 100);
     }
 
     // --- HTML BYGGARE ---
@@ -498,7 +507,9 @@
     updateClock();
     setInterval(updateClock, 1000);
     setInterval(update, 30000); 
-    setTimeout(() => { map.invalidateSize(); }, 500);
+    
+    // Inledande låsning av kartan när sidan laddas för första gången
+    setTimeout(() => { map.invalidateSize(); map.setView(NAVET_ENTRE, 15.5); }, 500);
     update();
 </script>
 </body>
