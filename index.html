@@ -136,7 +136,6 @@
     const STOP_SIMONSLAND = [57.72557, 12.93841];
     const STOP_RESECENTRUM = [57.720733, 12.932754];
 
-    // Centrerar kartan exakt på NAVET_ENTRE, zoom 15.5
     const map = L.map('map', { zoomControl: false }).setView(NAVET_ENTRE, 15.5);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
@@ -182,53 +181,32 @@
         "KALMAR": ["– för att bygga ett slott av kroppkakor", "– dags att leta efter den försvunna unionen", "– dags att testa brons aerodynamik i sidvind", "– undersök hur många Gustav Vasa-kopior som ryms på slottet"],
         "ALINGSÅS": ["– varning: extrem risk för överfika", "– dags att räkna exakt hur många potatisar som ryms i en säck", "– medtag egen medhavd finkaffekopp", "– där ljuset i tunneln är en årlig festival"],
         "DALSJÖFORS": ["– för att bada i Dalsjön tills du utvecklar gälar", "– dags att mäta vattenkvaliteten i Dalsjön", "– för att leta efter textiliernas försvunna guldålder"],
-        
-        // Vrålen - omskrivet till mer natur/vetenskap istället för "vrålande"
         "VRALEN": ["– dags att utforska skogarnas mystik", "– perfekt plats för en hemlig trädkoja", "– för att studera den lokala mossans tillväxt", "– glöm inte kompassen och fältbiolog-kepsen"],
         "VRÅLEN": ["– dags att utforska skogarnas mystik", "– perfekt plats för en hemlig trädkoja", "– för att studera den lokala mossans tillväxt", "– glöm inte kompassen och fältbiolog-kepsen"],
-
-        // Borås (20 texter) - Träffar alla okända orter på Simonsland (Lokalbussarna)
         "BORÅS_LOKAL": [
-            "– glöm inte paraplyet, det är ju Borås!",
-            "– dags att räkna hur många rondeller vi passerar",
-            "– staden där regn är en accepterad livsstil",
-            "– utmärkt väder för att testa nya gummistövlar",
-            "– mot textiliernas förlovade land",
-            "– kolla om Pinocchios näsa har vuxit idag",
-            "– dags att mäta vattennivån i Viskan",
-            "– staden med fler postorderpaket än invånare",
-            "– drivs bussen av regnvatten? Undersök saken!",
-            "– dags att uppfinna ett nytt aerodynamiskt regnplagg",
-            "– håll utkik efter tyg-reor längs vägen",
-            "– Sveriges blötaste, men helt klart bästa stad",
-            "– perfekt klimat för att sitta inne och fika",
-            "– navigera via bronsstatyer och rondellkonst",
-            "– en expedition genom bomull, regn och polyester",
-            "– testa aerodynamiken på ditt paraply när du kliver av",
-            "– dags att spana efter förrymda apor från djurparken",
-            "– undersök om Knalleland fortfarande har öppet",
-            "– dags att hälsa på stadens alla tyghandlare",
-            "– försök hitta en gata utan en enda rondell"
+            "– glöm inte paraplyet, det är ju Borås!", "– dags att räkna hur många rondeller vi passerar",
+            "– staden där regn är en accepterad livsstil", "– utmärkt väder för att testa nya gummistövlar",
+            "– mot textiliernas förlovade land", "– kolla om Pinocchios näsa har vuxit idag",
+            "– dags att mäta vattennivån i Viskan", "– staden med fler postorderpaket än invånare",
+            "– drivs bussen av regnvatten? Undersök saken!", "– dags att uppfinna ett nytt aerodynamiskt regnplagg",
+            "– håll utkik efter tyg-reor längs vägen", "– Sveriges blötaste, men helt klart bästa stad",
+            "– perfekt klimat för att sitta inne och fika", "– navigera via bronsstatyer och rondellkonst",
+            "– en expedition genom bomull, regn och polyester", "– testa aerodynamiken på ditt paraply när du kliver av",
+            "– dags att spana efter förrymda apor från djurparken", "– undersök om Knalleland fortfarande har öppet",
+            "– dags att hälsa på stadens alla tyghandlare", "– försök hitta en gata utan en enda rondell"
         ]
     };
 
     function getEasterEgg(destination, isLocalBus) {
         const destUpper = destination.toUpperCase();
-        
-        // 1. Kolla om orten har en egen specialtext
         if (easterEggs[destUpper]) {
             const eggs = easterEggs[destUpper];
-            const randomEgg = eggs[Math.floor(Math.random() * eggs.length)];
-            return `<span class="easter-egg">${randomEgg}</span>`;
+            return `<span class="easter-egg">${eggs[Math.floor(Math.random() * eggs.length)]}</span>`;
         }
-        
-        // 2. Om det är en lokalbuss från Simonsland, kör en av de 20 Borås-texterna!
         if (isLocalBus && easterEggs["BORÅS_LOKAL"]) {
             const eggs = easterEggs["BORÅS_LOKAL"];
-            const randomEgg = eggs[Math.floor(Math.random() * eggs.length)];
-            return `<span class="easter-egg">${randomEgg}</span>`;
+            return `<span class="easter-egg">${eggs[Math.floor(Math.random() * eggs.length)]}</span>`;
         }
-
         return "";
     }
 
@@ -247,7 +225,6 @@
     }
 
     async function update() {
-        // Återställ nedräkning visuellt så system och skärm synkar
         timeToUpdate = 30;
 
         if (!accessToken) await getToken();
@@ -257,7 +234,7 @@
         let tvTågAntal = 0;
         let vtTågAntal = 0;
 
-        // --- 1. HÄMTA SIMONSLAND (Lokalbussarna) ---
+        // --- 1. HÄMTA SIMONSLAND ---
         try {
             const urlS = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082035000/departures?limit=100&timeSpan=1440&maxDeparturesPerLineAndDirection=4`;
             const resS = await fetch(PROXY + encodeURIComponent(urlS), { headers: { 'Authorization': 'Bearer ' + accessToken } });
@@ -270,7 +247,6 @@
                             const isA = dep.stopPoint && dep.stopPoint.platform === "A";
                             const match = platform === "A" ? isA : !isA;
                             if (match && count < 4) {
-                                // isRightColumn = false -> Vilket betyder isLocalBus = true!
                                 html += createRow(dep, false, false); 
                                 count++;
                             }
@@ -287,17 +263,23 @@
         let combined = [];
         let tvHasData = false;
 
-        // A. Tåg från Trafikverket
+        // A. Tåg från Trafikverket (RÄTTAT TIDSFILTER, EXAKT ENLIGT MANUAL)
         try {
             const tvXML = `
                 <REQUEST>
                     <LOGIN authenticationkey='${TV_KEY}' />
-                    <QUERY objecttype='TrainAnnouncement' schemaversion='1.9' orderby='AdvertisedTimeAtLocation asc' limit='20'>
+                    <QUERY objecttype='TrainAnnouncement' schemaversion='1.8' orderby='AdvertisedTimeAtLocation asc' limit='20'>
                         <FILTER>
                             <AND>
                                 <EQ name='LocationSignature' value='Bs' />
                                 <EQ name='ActivityType' value='Avgang' />
-                                <GT name='AdvertisedTimeAtLocation' value='$dateadd(-0.01:00:00)' />
+                                <OR>
+                                    <AND>
+                                        <GT name='AdvertisedTimeAtLocation' value='$dateadd(-00:15:00)' />
+                                        <LT name='AdvertisedTimeAtLocation' value='$dateadd(14:00:00)' />
+                                    </AND>
+                                    <GT name='EstimatedTimeAtLocation' value='$now' />
+                                </OR>
                             </AND>
                         </FILTER>
                         <INCLUDE>InformationOwner</INCLUDE>
@@ -332,7 +314,7 @@
             }
         } catch (e) {}
 
-        // B. Reserv-tåg från Västtrafik
+        // B. Reserv-tåg från Västtrafik (Fångar upp ifall TV skulle strejka ändå)
         if (!tvHasData) {
             try {
                 const urlC = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082010000/departures?limit=30&timeSpan=1440`;
@@ -384,11 +366,8 @@
             }
         });
 
-        // ----------------------------------------------------
-        // DYNAMISK 12-PLATSER FYLLNING
-        // ----------------------------------------------------
+        // Fyller dynamiskt upp hela listan! (12 platser)
         const limitTime = new Date(new Date().getTime() - 60000); 
-        
         let futureItems = uniqueCombined.filter(item => item.t > limitTime);
         let futureTrainsCount = futureItems.filter(item => item.isTrain).length;
         
@@ -448,7 +427,6 @@
             let dest = d.serviceJourney.direction ? d.serviceJourney.direction.split(',')[0] : "OKÄND";
             const plat = d.stopPoint && d.stopPoint.platform ? d.stopPoint.platform : "-";
             
-            // Om isRightColumn är false, är det en lokalbuss från Simonsland!
             const isLocalBus = !isRightColumn;
             const egg = getEasterEgg(dest, isLocalBus);
             
@@ -493,7 +471,7 @@
             }
             const dest = stations[destCode.toUpperCase()] || destCode;
             
-            const egg = getEasterEgg(dest, false); // Tåg är aldrig lokalbussar
+            const egg = getEasterEgg(dest, false);
             
             let op = "TÅG";
             if (t.ProductInformation && t.ProductInformation.length > 0 && t.ProductInformation[0].Description) {
