@@ -132,7 +132,8 @@
     const STOP_SIMONSLAND = [57.72557, 12.93841];
     const STOP_RESECENTRUM = [57.720733, 12.932754];
 
-    const map = L.map('map', { zoomControl: false }).setView(NAVET_ENTRE, 15.5);
+    // ZOOM ÄNDRAD TILL 14.5 (Ett steg ut)
+    const map = L.map('map', { zoomControl: false }).setView(NAVET_ENTRE, 14.5);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
     L.polyline([NAVET_ENTRE, [57.7245, 12.9378], [57.7250, 12.9382], STOP_SIMONSLAND], {color: '#1D1D1B', weight: 4, dashArray: '5, 8', opacity: 0.6}).addTo(map);
@@ -250,7 +251,7 @@
             timeToUpdate = 30;
 
             if (!accessToken) await getToken();
-            if (!accessToken) return; // Stoppar koden snyggt om proxyn blockar, skärmen fryser ej utan väntar!
+            if (!accessToken) return; 
 
             let statusText = "Tavlor OK.";
             let tvTågAntal = 0;
@@ -260,7 +261,6 @@
             const urlS = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082035000/departures?limit=100&timeSpan=1440&maxDeparturesPerLineAndDirection=4`;
             const resS = await fetch(PROXY + encodeURIComponent(urlS), { headers: { 'Authorization': 'Bearer ' + accessToken } });
             
-            // Om nyckeln gått ut (401), nollställ så vi hämtar en ny nästa varv
             if (resS.status === 401) { accessToken = ""; throw new Error("Nyckel utgången"); }
             
             if (resS.ok) {
@@ -419,7 +419,7 @@
             document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
             setDebug(`${statusText} TV: ${tvTågAntal}, VT: ${vtTågAntal}`);
 
-            // --- 3. KARTAN ---
+            // --- 3. KARTAN (NY BUSSIKON + Zomma ut till 14.5) ---
             try {
                 const resP = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/pr/v4/positions?lowerLeftLat=57.71&lowerLeftLong=12.91&upperRightLat=57.74&upperRightLong=12.96'), {
                     headers: { 'Authorization': 'Bearer ' + accessToken }
@@ -427,12 +427,21 @@
                 if (resP.ok) {
                     const pData = await resP.json();
                     vehicleLayer.clearLayers();
+                    
+                    // Liten, fin och modern vit SVG-buss
+                    const busSvg = `<svg style="margin-right:4px; margin-top:-1px;" width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M4 16c0 .88.39 1.67 1 2.22v1.28c0 .83.67 1.5 1.5 1.5S8 20.33 8 19.5V19h8v.5c0 .82.67 1.5 1.5 1.5.82 0 1.5-.67 1.5-1.5v-1.28c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-1.5-6H6V6h12v5z"/></svg>`;
+
                     pData.forEach(v => {
                         if (v.latitude && v.line) {
                             let label = v.line.shortName || v.line.designation || v.line.name || "?";
                             if (label === "1") {
                                 L.marker([v.latitude, v.longitude], {
-                                    icon: L.divIcon({ className: '', html: `<div style="background:${v.line.backgroundColor || '#49a441'}; color:white; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:900; border:2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${label}</div>` })
+                                    icon: L.divIcon({ 
+                                        className: '', 
+                                        iconSize: [50, 26], // Storlek på piller-rutan
+                                        iconAnchor: [25, 13], // Centrerar pricken exakt över gatan
+                                        html: `<div style="background:${v.line.backgroundColor || '#49a441'}; color:white; width:100%; height:100%; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; border:2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${busSvg}${label}</div>` 
+                                    })
                                 }).addTo(vehicleLayer);
                             }
                         }
@@ -440,7 +449,7 @@
                 }
             } catch(e) {}
 
-            setTimeout(() => { map.invalidateSize(); map.setView(NAVET_ENTRE, 15.5); }, 100);
+            setTimeout(() => { map.invalidateSize(); map.setView(NAVET_ENTRE, 14.5); }, 100);
 
         } catch (error) {
             console.error(error);
@@ -529,7 +538,7 @@
     setInterval(updateClock, 1000);
     setInterval(update, 30000); 
     
-    setTimeout(() => { map.invalidateSize(); map.setView(NAVET_ENTRE, 15.5); }, 500);
+    setTimeout(() => { map.invalidateSize(); map.setView(NAVET_ENTRE, 14.5); }, 500);
     update();
 </script>
 </body>
