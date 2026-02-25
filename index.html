@@ -231,6 +231,7 @@
     };
 
     function getEasterEgg(destination, isLocalBus) {
+        if (!destination) return "";
         const destUpper = destination.toUpperCase();
         if (easterEggs[destUpper]) {
             return `<span class="easter-egg">${easterEggs[destUpper][Math.floor(Math.random() * easterEggs[destUpper].length)]}</span>`;
@@ -311,15 +312,16 @@
 
             // A. Tåg från Trafikverket
             try {
+                // NOTERA: ActivityType MÅSTE vara Avgang, annars hittas 0 tåg!
                 const tvXML = `<REQUEST>
                     <LOGIN authenticationkey="${TV_KEY}" />
                     <QUERY objecttype="TrainAnnouncement" schemaversion="1.8" orderby="AdvertisedTimeAtLocation" limit="50">
                         <FILTER>
                             <AND>
                                 <EQ name="LocationSignature" value="Bs" />
-                                <EQ name="ActivityType" value="Avgång" />
-                                <GT name="AdvertisedTimeAtLocation" value="$dateadd(-00:15:00)" />
-                                <LT name="AdvertisedTimeAtLocation" value="$dateadd(12:00:00)" />
+                                <EQ name="ActivityType" value="Avgang" />
+                                <GT name="AdvertisedTimeAtLocation" value="$dateadd(-01:00:00)" />
+                                <LT name="AdvertisedTimeAtLocation" value="$dateadd(14:00:00)" />
                             </AND>
                         </FILTER>
                         <INCLUDE>InformationOwner</INCLUDE>
@@ -334,7 +336,7 @@
                 
                 const resT = await fetch("https://api.trafikinfo.trafikverket.se/v2/data.json", {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/xml' },
+                    headers: { 'Content-Type': 'text/xml' },
                     body: tvXML
                 });
                 
@@ -343,12 +345,14 @@
                     if (dataT.RESPONSE && dataT.RESPONSE.RESULT[0].TrainAnnouncement) {
                         const trains = dataT.RESPONSE.RESULT[0].TrainAnnouncement;
                         trains.forEach(t => {
-                            if (t.Canceled === true) return; 
-                            const rowHtml = createTrainRow(t);
-                            if(rowHtml) {
-                                combined.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: rowHtml, isTrain: true });
-                                tvTågAntal++;
-                            }
+                            try { // Nu kraschar inte hela loopen om ett enda tåg har fel data
+                                if (t.Canceled === true) return; 
+                                const rowHtml = createTrainRow(t);
+                                if(rowHtml) {
+                                    combined.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: rowHtml, isTrain: true });
+                                    tvTågAntal++;
+                                }
+                            } catch (e) { console.error("Fel på enskilt TV-tåg: ", e); }
                         });
                         if (tvTågAntal > 0) tvHasData = true;
                     }
@@ -408,7 +412,6 @@
 
             combined.sort((a,b) => a.t - b.t);
             
-            // Unika avgångar
             let uniqueCombined = [];
             let prevId = "";
             combined.forEach(item => {
@@ -426,7 +429,7 @@
             futureItems.slice(0, 12).forEach(item => { rHtml += item.html; });
 
             document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
-            setDebug(`${statusText} Tåg via TV: ${tvTågAntal} st`);
+            setDebug(`${statusText} Tåg (TV): ${tvTågAntal} | Bussar/Reserv: ${uniqueCombined.length - tvTågAntal}`);
 
             // --- 3. KARTAN ---
             try {
@@ -507,22 +510,25 @@
         if (!timeStr) return "";
         
         const diff = Math.round((new Date(timeStr) - new Date()) / 60000);
-        const stations = { 'G': 'GÖTEBORG C', 'HR': 'HERRLJUNGA', 'VV': 'VARBERG', 'UV': 'UDDEVALLA', 'KAC': 'KALMAR C', 'VÖ': 'VÄXJÖ' };
+        const stations = { 'G': 'GÖTEBORG C', 'HR': 'HERRLJUNGA', 'VV': 'VARBERG', 'UV': 'UDDEVALLA', 'KAC': 'KALMAR C', 'VÖ': 'VÄXJÖ', 'BÅS': 'BORÅS C' };
         
         let dest = "OKÄND";
         if (t.ToLocation && t.ToLocation.length > 0) {
             const locObj = t.ToLocation[0];
             const locCode = (typeof locObj === 'string') ? locObj : locObj.LocationName;
-            dest = stations[locCode.toUpperCase()] || locCode;
+            if (locCode) dest = stations[locCode.toUpperCase()] || locCode;
         }
         const egg = getEasterEgg(dest, false);
         
         let op = "TÅG";
         if (t.ProductInformation && t.ProductInformation.length > 0) {
-            op = t.ProductInformation[0].Description || "TÅG";
+            const prod = t.ProductInformation[0];
+            // Fixen! Här hanterar vi säkert om API:et skickar en textsträng eller ett objekt
+            op = (typeof prod === 'string') ? prod : (prod.Description || "TÅG");
         } else if (t.InformationOwner) {
             op = t.InformationOwner;
         }
+        if(!op) op = "TÅG";
         
         const plat = t.TrackAtLocation || '-';
         
