@@ -182,7 +182,6 @@
         setInterval(update, 30000); 
         update();
         
-        // Centrera kartan säkert när sidan laddas första gången
         setTimeout(centerMap, 500);
         setTimeout(centerMap, 1500);
     }
@@ -320,18 +319,16 @@
             let combined = [];
             let tvHasData = false;
 
-            // A. Tåg från Trafikverket
+            // A. Tåg från Trafikverket - BOMBSÄKER METOD
             try {
-                // Nu skickar vi med text/xml (som i testet) och utan <INCLUDE> för maximal chans att få data
+                // Vi hämtar tåg via LocationSignature och ett generöst tidsfönster för att minska risken att missa något
                 const tvXML = `<REQUEST>
                     <LOGIN authenticationkey="${TV_KEY}" />
-                    <QUERY objecttype="TrainAnnouncement" schemaversion="1.9" orderby="AdvertisedTimeAtLocation" limit="50">
+                    <QUERY objecttype="TrainAnnouncement" schemaversion="1.9" orderby="AdvertisedTimeAtLocation" limit="100">
                         <FILTER>
                             <AND>
                                 <EQ name="LocationSignature" value="Bs" />
-                                <EQ name="ActivityType" value="Avgang" />
-                                <GT name="AdvertisedTimeAtLocation" value="$dateadd(-01:00:00)" />
-                                <LT name="AdvertisedTimeAtLocation" value="$dateadd(14:00:00)" />
+                                <GT name="AdvertisedTimeAtLocation" value="$dateadd(-02:00:00)" />
                             </AND>
                         </FILTER>
                     </QUERY>
@@ -339,25 +336,37 @@
                 
                 const resT = await fetch("https://api.trafikinfo.trafikverket.se/v2/data.json", {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/xml' }, // Detta gjorde att ditt test fungerade!
+                    headers: { 'Content-Type': 'text/xml' },
                     body: tvXML
                 });
                 
                 if (resT.ok) {
                     const dataT = await resT.json();
                     
-                    // Logga Trafikverkets direkta svar i konsolen!
-                    console.log("TRAFIKVERKET DATA:", dataT);
+                    // Skriver ut allt vi får i konsolen för felsökning om något bråkar i framtiden
+                    console.log("TRAFIKVERKET RÅDATA:", dataT);
 
                     if (dataT.RESPONSE && dataT.RESPONSE.RESULT[0].TrainAnnouncement) {
                         const trains = dataT.RESPONSE.RESULT[0].TrainAnnouncement;
+                        const now = new Date();
+                        
                         trains.forEach(t => {
                             try {
-                                if (t.Canceled === true) return; 
-                                const rowHtml = createTrainRow(t);
-                                if(rowHtml) {
-                                    combined.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: rowHtml, isTrain: true });
-                                    tvTågAntal++;
+                                // 1. Filtrera i JavaScript istället för i XML
+                                if (t.ActivityType !== "Avgang") return; 
+                                if (t.Canceled === true) return;         
+
+                                // 2. Räkna ut hur många minuter det är kvar
+                                const trainTime = new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation);
+                                const diffMinutes = Math.round((trainTime - now) / 60000);
+                                
+                                // 3. Visa tåget om det inte gick för mer än 15 minuter sedan
+                                if (diffMinutes > -15 && diffMinutes < 1440) { 
+                                    const rowHtml = createTrainRow(t);
+                                    if(rowHtml) {
+                                        combined.push({ t: trainTime, html: rowHtml, isTrain: true });
+                                        tvTågAntal++;
+                                    }
                                 }
                             } catch (e) { console.error("Fel på enskilt TV-tåg: ", e); }
                         });
