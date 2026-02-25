@@ -16,18 +16,34 @@
         header {
             padding: 15px 40px; display: flex; justify-content: space-between; align-items: center;
             background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(5px);
-            border-bottom: 3px solid var(--navet-green); z-index: 1000;
+            border-bottom: 3px solid var(--navet-green); z-index: 1000; flex-shrink: 0;
         }
         .logo-img { height: 50px; }
         .header-title { font-size: 1.6rem; font-weight: 900; text-transform: uppercase; }
         #clock { font-size: 2.5rem; font-weight: 900; }
-        .columns-container { display: flex; padding: 10px 20px; gap: 15px; flex-shrink: 0; }
+        
+        /* NY LAYOUT: Delad skärm */
+        .main-content {
+            display: flex; flex-grow: 1; padding: 15px 20px; gap: 20px; overflow: hidden;
+        }
+        .left-panel {
+            flex: 2; display: flex; flex-direction: column; gap: 15px; min-width: 0;
+        }
+        .simonsland-cols {
+            display: flex; gap: 20px; flex-shrink: 0;
+        }
+        .right-panel {
+            flex: 1; display: flex; flex-direction: column; min-width: 0;
+        }
+        
         .column { flex: 1; display: flex; flex-direction: column; }
+        .full-height-col { height: 100%; }
+        
         .column-header {
             font-family: 'Amatic SC', cursive; font-size: 1.8rem; text-align: center;
-            background: var(--navet-dark); color: white; padding: 5px; border-radius: 8px 8px 0 0; margin-bottom: 5px;
+            background: var(--navet-dark); color: white; padding: 5px; border-radius: 8px 8px 0 0; margin-bottom: 5px; flex-shrink: 0;
         }
-        .departure-list { display: flex; flex-direction: column; gap: 4px; min-height: 250px; }
+        .departure-list { display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
         .departure-row {
             background: rgba(255, 255, 255, 0.95); display: flex; align-items: center; padding: 6px 12px;
             border-radius: 8px; border-right: 6px solid var(--navet-green);
@@ -35,26 +51,26 @@
         }
         .line-badge { 
             min-width: 45px; height: 45px; display: flex; justify-content: center; align-items: center;
-            font-weight: 900; border-radius: 6px; margin-right: 12px; color: white; background: #333; font-size: 1.1rem;
+            font-weight: 900; border-radius: 6px; margin-right: 12px; color: white; font-size: 1.1rem;
         }
         .dest-wrapper { flex-grow: 1; overflow: hidden; }
         .destination { font-size: 0.9rem; font-weight: 900; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .platform { font-size: 0.75rem; color: #666; font-weight: 700; }
         .time-area { text-align: right; min-width: 60px; }
         .eta { font-size: 1.5rem; font-weight: 900; color: var(--navet-green); line-height: 1; }
-        #map { flex-grow: 1; margin: 10px 20px; border-radius: 15px; border: 3px solid var(--navet-dark); z-index: 1; }
-        footer { padding: 8px 40px; background: var(--navet-dark); color: white; display: flex; justify-content: space-between; font-weight: 700; font-size: 0.9rem; }
-        #debug-log { font-size: 0.75rem; opacity: 0.8; color: #ffcc00; }
+        
+        #map { flex-grow: 1; border-radius: 15px; border: 3px solid var(--navet-dark); z-index: 1; }
+        
+        footer { 
+            padding: 8px 40px; background: var(--navet-dark); color: white; display: flex; 
+            justify-content: space-between; align-items: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; 
+        }
+        #status-area { display: flex; gap: 15px; align-items: center; }
+        #countdown-timer { color: var(--navet-green); font-weight: 900; }
+        #debug-log { font-size: 0.75rem; opacity: 0.7; color: #ffcc00; }
         
         /* CSS för Easter Egg-texten */
-        .easter-egg {
-            color: var(--navet-green);
-            font-size: 0.7em;
-            font-style: italic;
-            text-transform: none; /* Ser till att texten är gemener för att sticka ut från orten */
-            font-weight: 700;
-            margin-left: 6px;
-        }
+        .easter-egg { color: var(--navet-green); font-size: 0.7em; font-style: italic; text-transform: none; font-weight: 700; margin-left: 6px; }
     </style>
 </head>
 <body>
@@ -65,26 +81,36 @@
     <div id="clock">00:00</div>
 </header>
 
-<div class="columns-container">
-    <div class="column">
-        <div class="column-header">Simonsland (Läge A)</div>
-        <div id="board-simonsland-in" class="departure-list">Laddar...</div>
+<div class="main-content">
+    <div class="left-panel">
+        <div class="simonsland-cols">
+            <div class="column">
+                <div class="column-header">Simonsland (Läge A)</div>
+                <div id="board-simonsland-in" class="departure-list">Laddar...</div>
+            </div>
+            <div class="column">
+                <div class="column-header">Simonsland (Övriga)</div>
+                <div id="board-simonsland-out" class="departure-list">Laddar...</div>
+            </div>
+        </div>
+        <div id="map"></div>
     </div>
-    <div class="column">
-        <div class="column-header">Simonsland (Övriga)</div>
-        <div id="board-simonsland-out" class="departure-list">Laddar...</div>
-    </div>
-    <div class="column">
-        <div class="column-header">Resecentrum (Tåg & Region)</div>
-        <div id="board-resecentrum" class="departure-list">Laddar...</div>
+    
+    <div class="right-panel">
+        <div class="column full-height-col">
+            <div class="column-header">Resecentrum (Tåg & Region)</div>
+            <div id="board-resecentrum" class="departure-list">Laddar...</div>
+        </div>
     </div>
 </div>
 
-<div id="map"></div>
-
 <footer>
     <div>UPPLEV. LÄR. UTFORSKA.</div>
-    <div id="debug-log">System startar...</div>
+    <div id="status-area">
+        <span id="countdown-timer">Uppdaterar om: 60s</span>
+        <span style="opacity: 0.3;">|</span>
+        <span id="debug-log">System startar...</span>
+    </div>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -96,6 +122,14 @@
     const PROXY = 'https://corsproxy.io/?';
 
     function setDebug(msg) { document.getElementById('debug-log').innerText = msg; }
+
+    // --- NEDRÄKNINGSTIMER ---
+    let timeToUpdate = 60;
+    setInterval(() => {
+        timeToUpdate--;
+        if (timeToUpdate < 0) timeToUpdate = 60;
+        document.getElementById('countdown-timer').innerText = `Uppdaterar om: ${timeToUpdate}s`;
+    }, 1000);
 
     // --- KARTA OCH RUTTER ---
     const NAVET_ENTRE = [57.724285, 12.936959];
@@ -115,7 +149,7 @@
     const vehicleLayer = L.layerGroup().addTo(map);
 
     // ==========================================
-    // NAVETS HEMLIGA EASTER EGGS 🥚🔬
+    // NAVETS HEMLIGA EASTER EGGS 
     // ==========================================
     const easterEggs = {
         "GÖTEBORG": ["– för att leta efter Glenn", "– dags att beräkna vindmotståndet på Avenyn", "– medtag egen paraply-krockkudde", "– ett utmärkt tillfälle att räkna spårvagnar"],
@@ -155,8 +189,6 @@
         }
         return "";
     }
-    // ==========================================
-
 
     let accessToken = "";
 
@@ -173,10 +205,15 @@
     }
 
     async function update() {
+        // Återställ nedräkning visuellt så system och skärm synkar
+        timeToUpdate = 60;
+
         if (!accessToken) await getToken();
         if (!accessToken) return;
 
-        let statusText = "VT OK.";
+        let statusText = "Tavlor OK.";
+        let tvTågAntal = 0;
+        let vtTågAntal = 0;
 
         // --- 1. HÄMTA SIMONSLAND ---
         try {
@@ -191,7 +228,7 @@
                             const isA = dep.stopPoint && dep.stopPoint.platform === "A";
                             const match = platform === "A" ? isA : !isA;
                             if (match && count < 4) {
-                                html += createRow(dep, false);
+                                html += createRow(dep, false, false); // isRightColumn = false
                                 count++;
                             }
                         }
@@ -207,7 +244,7 @@
         let combined = [];
         let tvHasData = false;
 
-        // A. Tåg från Trafikverket 
+        // A. Tåg från Trafikverket
         try {
             const tvXML = `
                 <REQUEST>
@@ -215,15 +252,9 @@
                     <QUERY objecttype='TrainAnnouncement' schemaversion='1.9' orderby='AdvertisedTimeAtLocation asc' limit='20'>
                         <FILTER>
                             <AND>
-                                <OR>
-                                    <AND>
-                                        <GT name='AdvertisedTimeAtLocation' value='$dateadd(-00:15:00)' />
-                                        <LT name='AdvertisedTimeAtLocation' value='$dateadd(14:00:00)' />
-                                    </AND>
-                                    <GT name='EstimatedTimeAtLocation' value='$now' />
-                                </OR>
                                 <EQ name='LocationSignature' value='Bs' />
                                 <EQ name='ActivityType' value='Avgang' />
+                                <GT name='AdvertisedTimeAtLocation' value='$dateadd(-0.01:00:00)' />
                             </AND>
                         </FILTER>
                         <INCLUDE>InformationOwner</INCLUDE>
@@ -248,7 +279,7 @@
                     const trains = dataT.RESPONSE.RESULT[0].TrainAnnouncement;
                     if (trains.length > 0) {
                         tvHasData = true;
-                        statusText += ` TV Laddat.`;
+                        tvTågAntal = trains.length;
                         trains.forEach(t => {
                             const rowHtml = createTrainRow(t);
                             if(rowHtml) combined.push({ t: new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation), html: rowHtml, isTrain: true });
@@ -267,12 +298,10 @@
                     const dataC = await resC.json();
                     if (dataC.results) {
                         dataC.results.forEach(d => {
-                            if (d.serviceJourney && d.serviceJourney.line) {
-                                const isTrain = d.serviceJourney.line.transportMode === 'train' || d.serviceJourney.line.transportMode === 'rail';
-                                if (isTrain) {
-                                    const rowHtml = createRow(d, true);
-                                    if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
-                                }
+                            const rowHtml = createRow(d, true, true); // forceTrainStyle=true, isRightColumn=true
+                            if(rowHtml) {
+                                combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
+                                vtTågAntal++;
                             }
                         });
                     }
@@ -280,9 +309,9 @@
             } catch(e) { }
         }
 
-        // C. Regionbussar
+        // C. Regionbussar från Resecentrum
         try {
-            const urlB = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082017000/departures?limit=40&timeSpan=1440&maxDeparturesPerLineAndDirection=5`;
+            const urlB = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082017000/departures?limit=50&timeSpan=1440&maxDeparturesPerLineAndDirection=5`;
             const resB = await fetch(PROXY + encodeURIComponent(urlB), { headers: { 'Authorization': 'Bearer ' + accessToken } });
             if (resB.ok) {
                 const dataB = await resB.json();
@@ -290,8 +319,9 @@
                     dataB.results.forEach(d => {
                         if (d.serviceJourney && d.serviceJourney.line) {
                             const lineNo = parseInt(d.serviceJourney.line.shortName);
+                            // Alla bussar över linje 31 är Regionbussar
                             if (lineNo > 31 || isNaN(lineNo)) {
-                                const rowHtml = createRow(d, false);
+                                const rowHtml = createRow(d, false, true); // forceTrainStyle=false, isRightColumn=true
                                 if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: false });
                             }
                         }
@@ -312,30 +342,22 @@
             }
         });
 
-        // Garantera plats för tåg!
+        // Eftersom kolumnen nu är mycket högre, låter vi den visa upp till 13 rader!
         let rHtml = "";
-        let bCount = 0;
-        let tCount = 0;
-        const totalTrains = uniqueCombined.filter(x => x.isTrain).length;
-        const maxBuses = totalTrains > 0 ? 4 : 7;
+        let totalCount = 0;
         const limitTime = new Date(new Date().getTime() - 60000); 
 
         uniqueCombined.forEach(item => {
-            if (item.t > limitTime && (bCount + tCount) < 7) {
-                if (item.isTrain) {
-                    rHtml += item.html;
-                    tCount++;
-                } else if (bCount < maxBuses) {
-                    rHtml += item.html;
-                    bCount++;
-                }
+            if (item.t > limitTime && totalCount < 13) {
+                rHtml += item.html;
+                totalCount++;
             }
         });
 
         document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
-        setDebug(`${statusText} | Uppdaterad ${new Date().toLocaleTimeString('sv-SE')}`);
+        setDebug(`${statusText} TV Tåg: ${tvTågAntal}, VT Tåg: ${vtTågAntal}`);
 
-        // --- 3. KARTAN ---
+        // --- 3. KARTAN (Bara Linje 1) ---
         try {
             const resP = await fetch(PROXY + encodeURIComponent('https://ext-api.vasttrafik.se/pr/v4/positions?lowerLeftLat=57.71&lowerLeftLong=12.91&upperRightLat=57.74&upperRightLong=12.96'), {
                 headers: { 'Authorization': 'Bearer ' + accessToken }
@@ -346,17 +368,22 @@
                 pData.forEach(v => {
                     if (v.latitude && v.line) {
                         let label = v.line.shortName || v.line.designation || v.line.name || "?";
-                        L.marker([v.latitude, v.longitude], {
-                            icon: L.divIcon({ className: '', html: `<div style="background:${v.line.backgroundColor || '#49a441'}; color:white; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:900; border:2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${label}</div>` })
-                        }).addTo(vehicleLayer);
+                        
+                        // FILTRERA SÅ BARA LINJE 1 SYNS
+                        if (label === "1") {
+                            L.marker([v.latitude, v.longitude], {
+                                icon: L.divIcon({ className: '', html: `<div style="background:${v.line.backgroundColor || '#49a441'}; color:white; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:900; border:2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${label}</div>` })
+                            }).addTo(vehicleLayer);
+                        }
                     }
                 });
             }
         } catch(e) {}
     }
 
-    // --- HTML BYGGARE MED EASTER EGGS ---
-    function createRow(d, isTrainStyle) {
+    // --- HTML BYGGARE ---
+    // Ny parameter "isRightColumn" styr om bussarna ska tvångs-färgas svarta.
+    function createRow(d, isTrainStyle, isRightColumn) {
         try {
             const diff = Math.round((new Date(d.estimatedTime || d.plannedTime) - new Date()) / 60000);
             let name = d.serviceJourney.line.shortName || d.serviceJourney.line.designation || "BUSS";
@@ -364,18 +391,22 @@
             let dest = d.serviceJourney.direction ? d.serviceJourney.direction.split(',')[0] : "OKÄND";
             const plat = d.stopPoint && d.stopPoint.platform ? d.stopPoint.platform : "-";
             
-            // Kolla om destinationen har ett easter egg!
             const egg = getEasterEgg(dest);
             
             if (isTrainStyle) {
-                return `<div class="departure-row" style="border-right-color:#607d8b">
-                    <div class="line-badge" style="background:#607d8b; font-size:0.75rem; text-align:center; padding: 2px; line-height:1;">VÄSTTÅG</div>
+                return `<div class="departure-row" style="border-right-color:#666666">
+                    <div class="line-badge" style="background:#666666; font-size:0.75rem; text-align:center; padding: 2px; line-height:1;">VÄSTTÅG</div>
                     <div class="dest-wrapper">
                         <div class="destination">MOT ${dest}${egg}</div>
                         <div class="platform">Spår ${plat}</div>
                     </div>
                     <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
                 </div>`;
+            }
+
+            // Regionbussar i högra kolumnen tvingas till svart bakgrundsfärg!
+            if (isRightColumn) {
+                bg = "#000000";
             }
 
             return `<div class="departure-row">
@@ -395,8 +426,6 @@
             if (!timeStr) return "";
             
             const diff = Math.round((new Date(timeStr) - new Date()) / 60000);
-            
-            // Trafikverkets databas-översättning, KAC översätts snyggt till KALMAR C
             const stations = { 'G': 'GÖTEBORG C', 'HR': 'HERRLJUNGA', 'VV': 'VARBERG', 'UV': 'UDDEVALLA', 'KAC': 'KALMAR C', 'VÖ': 'VÄXJÖ' };
             
             let destCode = "OKÄND";
@@ -404,11 +433,8 @@
                 if (typeof t.ToLocation[0] === 'string') destCode = t.ToLocation[0];
                 else if (t.ToLocation[0].LocationName) destCode = t.ToLocation[0].LocationName;
             }
-            
-            // Översätt koden (T.ex. från KAC till KALMAR C)
             const dest = stations[destCode.toUpperCase()] || destCode;
             
-            // Hämta easter egg för den översatta staden
             const egg = getEasterEgg(dest);
             
             let op = "TÅG";
@@ -420,8 +446,9 @@
             
             const plat = t.TrackAtLocation || '-';
             
-            return `<div class="departure-row" style="border-right-color:#607d8b">
-                <div class="line-badge" style="background:#607d8b; font-size:0.75rem; text-align:center; padding: 2px; line-height:1;">${op}</div>
+            // Trafikverket Tåg får grå fyrkant (#666666) och grå ramkant
+            return `<div class="departure-row" style="border-right-color:#666666">
+                <div class="line-badge" style="background:#666666; font-size:0.75rem; text-align:center; padding: 2px; line-height:1;">${op}</div>
                 <div class="dest-wrapper">
                     <div class="destination">MOT ${dest}${egg}</div>
                     <div class="platform">Spår ${plat}</div>
