@@ -173,7 +173,6 @@
         vehicleLayer = L.layerGroup().addTo(map);
 
         setInterval(update, 30000); 
-        setTimeout(() => { map.invalidateSize(); map.setView(NAVET_ENTRE, 14.5); }, 500);
         update();
     }
 
@@ -312,10 +311,10 @@
 
             // A. Tåg från Trafikverket
             try {
-                // NOTERA: ActivityType MÅSTE vara Avgang, annars hittas 0 tåg!
+                // Skala ner och robustgör sökningen - tar bort INCLUDE för att få komplett datanod oavsett version
                 const tvXML = `<REQUEST>
                     <LOGIN authenticationkey="${TV_KEY}" />
-                    <QUERY objecttype="TrainAnnouncement" schemaversion="1.8" orderby="AdvertisedTimeAtLocation" limit="50">
+                    <QUERY objecttype="TrainAnnouncement" schemaversion="1.9" orderby="AdvertisedTimeAtLocation" limit="50">
                         <FILTER>
                             <AND>
                                 <EQ name="LocationSignature" value="Bs" />
@@ -324,19 +323,12 @@
                                 <LT name="AdvertisedTimeAtLocation" value="$dateadd(14:00:00)" />
                             </AND>
                         </FILTER>
-                        <INCLUDE>InformationOwner</INCLUDE>
-                        <INCLUDE>AdvertisedTimeAtLocation</INCLUDE>
-                        <INCLUDE>EstimatedTimeAtLocation</INCLUDE>
-                        <INCLUDE>TrackAtLocation</INCLUDE>
-                        <INCLUDE>ToLocation</INCLUDE>
-                        <INCLUDE>ProductInformation</INCLUDE>
-                        <INCLUDE>Canceled</INCLUDE>
                     </QUERY>
                 </REQUEST>`;
                 
                 const resT = await fetch("https://api.trafikinfo.trafikverket.se/v2/data.json", {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/xml' },
+                    headers: { 'Content-Type': 'application/xml' },
                     body: tvXML
                 });
                 
@@ -345,7 +337,7 @@
                     if (dataT.RESPONSE && dataT.RESPONSE.RESULT[0].TrainAnnouncement) {
                         const trains = dataT.RESPONSE.RESULT[0].TrainAnnouncement;
                         trains.forEach(t => {
-                            try { // Nu kraschar inte hela loopen om ett enda tåg har fel data
+                            try {
                                 if (t.Canceled === true) return; 
                                 const rowHtml = createTrainRow(t);
                                 if(rowHtml) {
@@ -410,10 +402,11 @@
                 }
             } catch(e) {}
 
-            combined.sort((a,b) => a.t - b.t);
-            
+            // -- FILTER OCH PRIORITERING --
             let uniqueCombined = [];
             let prevId = "";
+            combined.sort((a,b) => a.t - b.t); // Sortera först på tid
+            
             combined.forEach(item => {
                 let id = item.t.getTime().toString() + item.html.substring(0,20);
                 if (id !== prevId) {
@@ -425,11 +418,31 @@
             const limitTime = new Date(new Date().getTime() - 60000); 
             let futureItems = uniqueCombined.filter(item => item.t > limitTime);
             
+            // Prioritera in tåg så de inte puttas bort av bussar
+            let trains = futureItems.filter(item => item.isTrain);
+            let buses = futureItems.filter(item => !item.isTrain);
+            
+            const MAX_TOTAL = 12; // Vi visar max 12 items i listan
+            const MAX_TRAINS = 6; // Låt tåg ta max 6 platser 
+            
+            let renderTrains = trains.slice(0, MAX_TRAINS);
+            let renderBuses = buses.slice(0, MAX_TOTAL - renderTrains.length);
+            
+            // Om listan fortfarande inte är 12 lång, lägg till mer tåg (om det finns)
+            if (renderTrains.length + renderBuses.length < MAX_TOTAL) {
+                let extratrains = trains.slice(MAX_TRAINS, MAX_TRAINS + (MAX_TOTAL - renderTrains.length - renderBuses.length));
+                renderTrains = renderTrains.concat(extratrains);
+            }
+            
+            // Slå ihop allting och sortera kronologiskt igen
+            let finalItems = renderTrains.concat(renderBuses);
+            finalItems.sort((a,b) => a.t - b.t);
+
             let rHtml = "";
-            futureItems.slice(0, 12).forEach(item => { rHtml += item.html; });
+            finalItems.forEach(item => { rHtml += item.html; });
 
             document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
-            setDebug(`${statusText} Tåg (TV): ${tvTågAntal} | Bussar/Reserv: ${uniqueCombined.length - tvTågAntal}`);
+            setDebug(`${statusText} Tåg (TV): ${tvTågAntal} | Västtrafik/Reserv: ${uniqueCombined.length - tvTågAntal}`);
 
             // --- 3. KARTAN ---
             try {
@@ -462,6 +475,14 @@
                     });
                 }
             } catch(e) {}
+
+            // VIKTIG FIX: Vänta tills flex-boxen har ritats om på skärmen innan vi låser kartan!
+            setTimeout(() => {
+                if(map) {
+                    map.invalidateSize();
+                    map.setView(NAVET_ENTRE, 14.5);
+                }
+            }, 600);
 
         } catch (error) {
             showErrorOnBoards(error.message);
@@ -523,7 +544,6 @@
         let op = "TÅG";
         if (t.ProductInformation && t.ProductInformation.length > 0) {
             const prod = t.ProductInformation[0];
-            // Fixen! Här hanterar vi säkert om API:et skickar en textsträng eller ett objekt
             op = (typeof prod === 'string') ? prod : (prod.Description || "TÅG");
         } else if (t.InformationOwner) {
             op = t.InformationOwner;
