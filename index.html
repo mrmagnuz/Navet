@@ -56,18 +56,35 @@
 
         .departure-list { display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
         .departure-row {
-            background: rgba(255, 255, 255, 0.95); display: flex; align-items: center; padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.95); display: flex; align-items: center; padding: 8px 12px;
             border-radius: 8px; border-right: 6px solid var(--navet-green);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); min-height: 55px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); min-height: 60px;
         }
         .line-badge { 
             min-width: 45px; height: 45px; display: flex; justify-content: center; align-items: center;
-            font-weight: 900; border-radius: 6px; margin-right: 12px; color: white; font-size: 1.1rem;
+            font-weight: 900; border-radius: 6px; margin-right: 12px; color: white; font-size: 1.1rem; flex-shrink: 0;
         }
-        .dest-wrapper { flex-grow: 1; overflow: hidden; }
-        .destination { font-size: 0.9rem; font-weight: 900; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .platform { font-size: 0.75rem; color: #666; font-weight: 700; }
-        .time-area { text-align: right; min-width: 60px; }
+        
+        /* Uppdaterad layout för texten */
+        .dest-wrapper { flex-grow: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+        .destination { font-size: 0.95rem; font-weight: 900; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.1; }
+        
+        /* Den nya snygga designen för dina skämt! */
+        .easter-egg { 
+            color: #3b8734; /* En lite mörkare, mer lättläst grön */
+            font-size: 0.8rem; 
+            font-style: italic; 
+            font-weight: 700; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            padding-top: 3px;
+            padding-bottom: 1px;
+        }
+        
+        .platform { font-size: 0.75rem; color: #666; font-weight: 700; text-transform: uppercase; }
+        
+        .time-area { text-align: right; min-width: 60px; flex-shrink: 0; }
         .eta { font-size: 1.5rem; font-weight: 900; color: var(--navet-green); line-height: 1; }
         
         footer { 
@@ -77,8 +94,6 @@
         #status-area { display: flex; gap: 15px; align-items: center; }
         #countdown-timer { color: var(--navet-green); font-weight: 900; }
         #debug-log { font-size: 0.75rem; opacity: 0.7; color: #ffcc00; }
-        
-        .easter-egg { color: var(--navet-green); font-size: 0.7em; font-style: italic; text-transform: none; font-weight: 700; margin-left: 6px; }
     </style>
 </head>
 <body>
@@ -137,7 +152,6 @@
     let map, vehicleLayer;
     let accessToken = "";
     
-    // NYTT: Här minns systemet vilka skämt som använts för stunden
     let usedEasterEggs = new Set();
 
     const NAVET_ENTRE = [57.724285, 12.936959];
@@ -300,11 +314,9 @@
         }
         hash = Math.abs(hash);
 
-        // Börja leta på index baserat på hashen
         let startIndex = hash % pool.length;
         let selectedText = pool[startIndex];
 
-        // Om texten redan visas på en annan buss/tåg, gå vidare till nästa lediga text!
         let attempts = 0;
         while (usedEasterEggs.has(selectedText) && attempts < pool.length) {
             startIndex = (startIndex + 1) % pool.length;
@@ -312,10 +324,10 @@
             attempts++;
         }
 
-        // Spara texten i minnet så att nästa buss inte kan ta den
         usedEasterEggs.add(selectedText);
 
-        return `<span class="easter-egg">${selectedText}</span>`;
+        // Skickas nu tillbaka inbakad i en block-div för den nya layouten
+        return `<div class="easter-egg">${selectedText}</div>`;
     }
 
     async function getToken() {
@@ -350,8 +362,6 @@
     async function update() {
         try {
             timeToUpdate = 30;
-            
-            // Rensa minnet av använda skämt inför denna nya utritning!
             usedEasterEggs.clear();
 
             if (!accessToken) await getToken();
@@ -479,7 +489,7 @@
                 }
             } catch(e) {}
 
-            // -- FILTER OCH PRIORITERING (Endast strikt tid) --
+            // -- FILTER OCH PRIORITERING --
             let uniqueCombined = [];
             let prevId = "";
             combined.sort((a,b) => a.t - b.t); 
@@ -554,13 +564,16 @@
             const plat = d.stopPoint && d.stopPoint.platform ? d.stopPoint.platform : "-";
             
             const uniqueId = (d.serviceJourney && d.serviceJourney.id) ? d.serviceJourney.id : (name + dest + time.getTime());
+            
+            // Uppdaterat för den nya layouten där egg ligger på egen rad!
             const egg = getEasterEgg(dest, !isRightColumn, uniqueId);
             
             if (isTrainStyle) {
                 return `<div class="departure-row" style="border-right-color:#666666">
                     <div class="line-badge" style="background:#666666; font-size:0.7rem; text-align:center; padding: 2px; line-height:1.1;">VÄSTTÅG</div>
                     <div class="dest-wrapper">
-                        <div class="destination">MOT ${dest}${egg}</div>
+                        <div class="destination">MOT ${dest}</div>
+                        ${egg}
                         <div class="platform">Spår ${plat}</div>
                     </div>
                     <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
@@ -573,7 +586,8 @@
             return `<div class="departure-row">
                 <div class="line-badge" style="background:${bg}">${name}</div>
                 <div class="dest-wrapper">
-                    <div class="destination">MOT ${dest}${egg}</div>
+                    <div class="destination">MOT ${dest}</div>
+                    ${egg}
                     <div class="platform">Läge ${plat}</div>
                 </div>
                 <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
@@ -621,7 +635,8 @@
         return `<div class="departure-row" style="border-right-color:#666666">
             <div class="line-badge" style="background:#666666; font-size:0.7rem; text-align:center; padding: 2px; line-height:1.1;">${op.substring(0,10).toUpperCase()}</div>
             <div class="dest-wrapper">
-                <div class="destination">MOT ${dest}${egg}</div>
+                <div class="destination">MOT ${dest}</div>
+                ${egg}
                 <div class="platform">Spår ${plat}</div>
             </div>
             <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
