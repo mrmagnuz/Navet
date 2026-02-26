@@ -207,8 +207,8 @@
         "ULRICEHAMN": ["– för att åka längdskidor på asfalten", "– undersök friktionen mellan byxa och pulkabacke"],
         "ULRICEHAMN VIA GÄLLSTAD": ["– för att åka längdskidor på asfalten", "– undersök friktionen mellan byxa och pulkabacke"],
         "SANDARED": ["– för att beräkna sandkornens totala densitet", "– dags att bygga sandslott i stormvind"],
-        "HERRLJUNGA": ["– dags att provsmaka 40 liter äppelcider", "– analysera ciderns koldioxidbubblor i mikroskop"],
-        "VARBERG": ["– för att mäta havets salthalt med tungan", "– perfekt för en fältstudie i måsars störtflygning"],
+        "HERRLJUNGA": ["– dags att provsmaka 40 liter äppelcider", "– analysera ciderns koldioxidbubblor i mikroskop", "– tåget mot tågbytenas urmoder!"],
+        "VARBERG": ["– för att mäta havets salthalt med tungan", "– perfekt för en fältstudie i måsars störtflygning", "– dags att leta efter fästningen i mörkret!"],
         "ÖXNERED": ["– 'Lilla Paris' behöver fler baguetter", "– dags att mäta vattenståndet med tumstock"],
         "VÄNERSBORG": ["– 'Lilla Paris' behöver fler baguetter", "– dags att mäta vattenståndet med tumstock"],
         "HORRED": ["– dags att väva en matta av halländskt gräs", "– varning för plötsliga skurar av garn"],
@@ -321,7 +321,7 @@
 
             // A. Tåg från Trafikverket
             try {
-                // Notera: LocationSignature="Bs" för Borås Central.
+                // Notera: LocationSignature="Bsc" (Borås Central)
                 const tvXML = `<REQUEST>
                     <LOGIN authenticationkey="${TV_KEY}" />
                     <QUERY objecttype="TrainAnnouncement" schemaversion="1.9" orderby="AdvertisedTimeAtLocation" limit="50">
@@ -370,7 +370,7 @@
                     } else if (dataT.RESPONSE && dataT.RESPONSE.RESULT[0].ERROR) {
                         tvStatusMsg = `TV Error: ${dataT.RESPONSE.RESULT[0].ERROR.MESSAGE}`;
                     } else {
-                        tvStatusMsg = "TV Svarade: Inga tåg funna för Bs.";
+                        tvStatusMsg = "TV Svarade: Inga tåg funna för Bsc.";
                     }
                 } else {
                     tvStatusMsg = `TV HTTP Fel: ${resT.status}`;
@@ -396,7 +396,7 @@
                                 let isVtTrain = (mode === 'train' || mode === 'rail' || lineName.includes('tåg') || ['1', '2', '3', '4'].includes(plat));
 
                                 if (isVtTrain && tvTågAntal === 0) {
-                                    // Bara om Trafikverket failar lånar vi tågen som Västtrafik skickar hit
+                                    // Bara om Trafikverket failar helt använder vi Västtrafiks tåg-data
                                     const rowHtml = createRow(d, true, true, null); 
                                     if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
                                 } else if (lineNo > 31 || isNaN(lineNo)) {
@@ -446,8 +446,6 @@
             finalItems.forEach(item => { rHtml += item.html; });
 
             document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
-            
-            // Uppdaterar den lilla texten längst ner till höger på skärmen
             setDebug(`Status: ${tvStatusMsg}`);
 
             setTimeout(centerMap, 200);
@@ -530,7 +528,17 @@
         if (!timeStr) return "";
         
         const diff = Math.round((new Date(timeStr) - new Date()) / 60000);
-        const stations = { 'G': 'GÖTEBORG C', 'HR': 'HERRLJUNGA', 'VV': 'VARBERG', 'UV': 'UDDEVALLA', 'KAC': 'KALMAR C', 'VÖ': 'VÄXJÖ', 'BÅS': 'BORÅS C' };
+        
+        // HÄR HAR VI LAGT IN DE NYA FÖRKORTNINGARNA (Vbc, Hrc etc.)
+        const stations = { 
+            'G': 'GÖTEBORG C', 
+            'HR': 'HERRLJUNGA', 'HRC': 'HERRLJUNGA', 
+            'VV': 'VARBERG', 'VBC': 'VARBERG', 
+            'UV': 'UDDEVALLA', 
+            'KAC': 'KALMAR C', 
+            'VÖ': 'VÄXJÖ', 
+            'BÅS': 'BORÅS C' 
+        };
         
         let dest = "OKÄND";
         if (t.ToLocation && t.ToLocation.length > 0) {
@@ -565,6 +573,3 @@
 </script>
 </body>
 </html>
-
-
-
