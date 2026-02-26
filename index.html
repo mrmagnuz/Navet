@@ -136,6 +136,9 @@
     let timeToUpdate = 30;
     let map, vehicleLayer;
     let accessToken = "";
+    
+    // NYTT: Här minns systemet vilka skämt som använts för stunden
+    let usedEasterEggs = new Set();
 
     const NAVET_ENTRE = [57.724285, 12.936959];
     const STOP_SIMONSLAND = [57.72557, 12.93841];
@@ -225,7 +228,18 @@
         "DALSJÖFORS": ["– för att bada i Dalsjön tills du utvecklar gälar", "– dags att mäta vattenkvaliteten i Dalsjön"],
         "VRALEN": ["– perfekt plats för en hemlig trädkoja", "– glöm inte kompassen och fältbiolog-kepsen"],
         "VRÅLEN": ["– perfekt plats för en hemlig trädkoja", "– glöm inte kompassen och fältbiolog-kepsen"],
-        "CENTRUM": ["– dags att uppleva stadens puls", "– navigera försiktigt bland rondellerna"],
+        "CENTRUM": [
+            "– dags att uppleva stadens puls", 
+            "– navigera försiktigt bland rondellerna",
+            "– biopopcornen väntar runt hörnet!",
+            "– perfekt läge för en god restaurangmiddag",
+            "– dags för en natt på hotell, kanske?",
+            "– ta en mysig promenad genom Stadsparken",
+            "– glöm inte badbyxorna, Stadsparksbadet kallar!",
+            "– dags för lite fönstershopping på stan",
+            "– mot Borås bultande hjärta!",
+            "– en fika på stan sitter aldrig fel"
+        ],
         "KNALLELAND": [
             "– dags att fynda loss bland butikerna", 
             "– för att inspektera Knalle-historien närmare",
@@ -270,6 +284,15 @@
         if (!destination) return "";
         const destUpper = destination.toUpperCase();
         
+        let pool = [];
+        if (easterEggs[destUpper]) {
+            pool = easterEggs[destUpper];
+        } else if (isLocalBus && easterEggs["BORÅS_LOKAL"]) {
+            pool = easterEggs["BORÅS_LOKAL"];
+        }
+
+        if (pool.length === 0) return "";
+        
         let hash = 0;
         const str = uniqueId ? uniqueId.toString() : destination;
         for (let i = 0; i < str.length; i++) {
@@ -277,13 +300,22 @@
         }
         hash = Math.abs(hash);
 
-        if (easterEggs[destUpper]) {
-            return `<span class="easter-egg">${easterEggs[destUpper][hash % easterEggs[destUpper].length]}</span>`;
+        // Börja leta på index baserat på hashen
+        let startIndex = hash % pool.length;
+        let selectedText = pool[startIndex];
+
+        // Om texten redan visas på en annan buss/tåg, gå vidare till nästa lediga text!
+        let attempts = 0;
+        while (usedEasterEggs.has(selectedText) && attempts < pool.length) {
+            startIndex = (startIndex + 1) % pool.length;
+            selectedText = pool[startIndex];
+            attempts++;
         }
-        if (isLocalBus && easterEggs["BORÅS_LOKAL"]) {
-            return `<span class="easter-egg">${easterEggs["BORÅS_LOKAL"][hash % easterEggs["BORÅS_LOKAL"].length]}</span>`;
-        }
-        return "";
+
+        // Spara texten i minnet så att nästa buss inte kan ta den
+        usedEasterEggs.add(selectedText);
+
+        return `<span class="easter-egg">${selectedText}</span>`;
     }
 
     async function getToken() {
@@ -318,6 +350,9 @@
     async function update() {
         try {
             timeToUpdate = 30;
+            
+            // Rensa minnet av använda skämt inför denna nya utritning!
+            usedEasterEggs.clear();
 
             if (!accessToken) await getToken();
             if (!accessToken) return;
@@ -432,7 +467,6 @@
                                 let isVtTrain = (mode === 'train' || mode === 'rail' || lineName.includes('tåg') || ['1', '2', '3', '4'].includes(plat));
 
                                 if (isVtTrain && tvTågAntal === 0) {
-                                    // Bara om Trafikverket failar helt använder vi Västtrafiks tåg-data
                                     const rowHtml = createRow(d, true, true, null); 
                                     if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
                                 } else if (lineNo > 31 || isNaN(lineNo)) {
