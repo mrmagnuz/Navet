@@ -193,8 +193,61 @@
         return dest; 
     }
 
+    const easterEggs = {
+        "GÖTEBORG": ["– för att leta efter Glenn", "– dags att beräkna vindmotståndet på Avenyn", "– medtag egen paraply-krockkudde"],
+        "GÖTEBORG C": ["– för att leta efter Glenn", "– dags att beräkna vindmotståndet på Avenyn", "– medtag egen paraply-krockkudde"],
+        "UDDEVALLA": ["– för att bygga en ubåt av snäckskal", "– dags att utmana en fiskmås i schack"],
+        "VISKAFORS": ["– för att spana efter Viskan-odjuret", "– dags att mäta friktionen i gummisulor"],
+        "KINNARUMMA": ["– orten med det roligaste namnet att säga snabbt", "– dags att räkna antalet epatraktorer"],
+        "KINNA": ["– för att rulla in dig i 14 meter tyg", "– dags att sy en rymddräkt av gamla gardiner", "– varning: extrem risk för trådtrazzel"],
+        "SKENE": ["– för att rulla in dig i 14 meter tyg", "– dags att sy en rymddräkt av gamla gardiner"],
+        "SVENLJUNGA": ["– för att koka kaffe på Ätran-vatten", "– dags att uppfinna en ny typ av papperskorg"],
+        "FRISTAD": ["– dags att bygga ett fort av klädhängare", "– för att mäta ljudets hastighet över sjön"],
+        "TRANEMO": ["– för att testa hållfastheten i glasrutor", "– orten där sexkanten är den heligaste formen"],
+        "ULRICEHAMN": ["– för att åka längdskidor på asfalten", "– undersök friktionen mellan byxa och pulkabacke"],
+        "ULRICEHAMN VIA GÄLLSTAD": ["– för att åka längdskidor på asfalten", "– undersök friktionen mellan byxa och pulkabacke"],
+        "SANDARED": ["– för att beräkna sandkornens totala densitet", "– dags att bygga sandslott i stormvind"],
+        "HERRLJUNGA": ["– dags att provsmaka 40 liter äppelcider", "– analysera ciderns koldioxidbubblor i mikroskop"],
+        "VARBERG": ["– för att mäta havets salthalt med tungan", "– perfekt för en fältstudie i måsars störtflygning"],
+        "ÖXNERED": ["– 'Lilla Paris' behöver fler baguetter", "– dags att mäta vattenståndet med tumstock"],
+        "VÄNERSBORG": ["– 'Lilla Paris' behöver fler baguetter", "– dags att mäta vattenståndet med tumstock"],
+        "HORRED": ["– dags att väva en matta av halländskt gräs", "– varning för plötsliga skurar av garn"],
+        "VEDDIGE": ["– för att spela ishockey på gräs", "– dags att undersöka kornas matsmältning"],
+        "SVANEHOLM": ["– för att infiltrera svanarnas hemliga bas", "– medtag egen fjäderboa för kamouflage"],
+        "GÄLLSTAD": ["– för att testa elasticiteten i 100 par byxor", "– trikå-paradiset kallar!"],
+        "ERIKSTORP": ["– dags att undersöka om bollarna faktiskt byggs här", "– för att testa baklängesgång genom byn"],
+        "BOLLEBYGD": ["– dags att undersöka om bollarna faktiskt byggs här", "– för att testa baklängesgång genom byn"],
+        "ERIKSTORP VIA BOLLEBYGD": ["– en noggrant uträknad omväg för vetenskapens skull", "– för att testa baklängesgång genom byn"],
+        "LÄNGHEM": ["– dags att spökjaga med värmekamera på Torpa", "– för att mäta exakt hur 'långt hem' det faktiskt är"],
+        "KALMAR C": ["– för att bygga ett slott av kroppkakor", "– dags att leta efter den försvunna unionen"],
+        "KALMAR": ["– för att bygga ett slott av kroppkakor", "– dags att leta efter den försvunna unionen"],
+        "ALINGSÅS": ["– varning: extrem risk för överfika", "– medtag egen medhavd finkaffekopp"],
+        "DALSJÖFORS": ["– för att bada i Dalsjön tills du utvecklar gälar", "– dags att mäta vattenkvaliteten i Dalsjön"],
+        "VRALEN": ["– perfekt plats för en hemlig trädkoja", "– glöm inte kompassen och fältbiolog-kepsen"],
+        "VRÅLEN": ["– perfekt plats för en hemlig trädkoja", "– glöm inte kompassen och fältbiolog-kepsen"],
+        "CENTRUM": ["– dags att uppleva stadens puls", "– navigera försiktigt bland rondellerna"],
+        "KNALLELAND": ["– dags att fynda loss bland butikerna", "– för att inspektera Knalle-historien närmare"],
+        "BORÅS_LOKAL": [
+            "– glöm inte paraplyet, det är ju Borås!", "– dags att räkna hur många rondeller vi passerar",
+            "– staden där regn är en accepterad livsstil", "– utmärkt väder för att testa nya gummistövlar",
+            "– kolla om Pinocchios näsa har vuxit idag", "– dags att mäta vattennivån i Viskan",
+            "– staden med fler postorderpaket än invånare", "– drivs bussen av regnvatten? Undersök saken!",
+            "– dags att uppfinna ett nytt aerodynamiskt regnplagg", "– håll utkik efter tyg-reor längs vägen",
+            "– Sveriges blötaste, men helt klart bästa stad", "– perfekt klimat för att sitta inne och fika",
+            "– en expedition genom bomull, regn och polyester", "– dags att spana efter förrymda apor från djurparken"
+        ]
+    };
+
     function getEasterEgg(destination, isLocalBus) {
-        return ""; // Dold för att koden ska hållas kort här
+        if (!destination) return "";
+        const destUpper = destination.toUpperCase();
+        if (easterEggs[destUpper]) {
+            return `<span class="easter-egg">${easterEggs[destUpper][Math.floor(Math.random() * easterEggs[destUpper].length)]}</span>`;
+        }
+        if (isLocalBus && easterEggs["BORÅS_LOKAL"]) {
+            return `<span class="easter-egg">${easterEggs["BORÅS_LOKAL"][Math.floor(Math.random() * easterEggs["BORÅS_LOKAL"].length)]}</span>`;
+        }
+        return "";
     }
 
     async function getToken() {
@@ -268,14 +321,15 @@
 
             // A. Tåg från Trafikverket
             try {
+                // Notera: LocationSignature="Bs" för Borås Central.
                 const tvXML = `<REQUEST>
                     <LOGIN authenticationkey="${TV_KEY}" />
                     <QUERY objecttype="TrainAnnouncement" schemaversion="1.9" orderby="AdvertisedTimeAtLocation" limit="50">
                         <FILTER>
                             <AND>
-                                <EQ name="LocationSignature" value="G" />
+                                <EQ name="LocationSignature" value="Bs" />
                                 <EQ name="ActivityType" value="Avgang" />
-                                <GT name="AdvertisedTimeAtLocation" value="$dateadd(-0.01:00:00)" />
+                                <GT name="AdvertisedTimeAtLocation" value="$dateadd(-0.00:15:00)" />
                                 <LT name="AdvertisedTimeAtLocation" value="$dateadd(0.12:00:00)" />
                             </AND>
                         </FILTER>
@@ -324,8 +378,6 @@
             } catch (e) { 
                 tvStatusMsg = "TV Nätverksfel."; 
             }
-
-            // (Block B var den gamla 404-koden, som nu är helt borttagen!)
 
             // C. Regionbussar från Resecentrum
             try {
@@ -395,7 +447,7 @@
 
             document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
             
-            // Uppdaterar den lilla gula texten längst ner till höger på skärmen!
+            // Uppdaterar den lilla texten längst ner till höger på skärmen
             setDebug(`Status: ${tvStatusMsg}`);
 
             setTimeout(centerMap, 200);
@@ -513,4 +565,3 @@
 </script>
 </body>
 </html>
-
