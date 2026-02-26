@@ -130,8 +130,6 @@
     const V_KEY = 'QlypIiMS1PaWXe5Nu1HWl1bCYU8a';
     const V_SECRET = 'OfZF4rSB2MaWEx1qgTtuMVMue70a';
     const TV_KEY = '8b529134e7844ac48320577d18d0237e';
-    
-    // Ingen proxy används längre. Vi anropar API:erna direkt.
 
     function setDebug(msg) { document.getElementById('debug-log').innerText = msg; }
 
@@ -195,67 +193,13 @@
         return dest; 
     }
 
-    const easterEggs = {
-        "GÖTEBORG": ["– för att leta efter Glenn", "– dags att beräkna vindmotståndet på Avenyn", "– medtag egen paraply-krockkudde"],
-        "GÖTEBORG C": ["– för att leta efter Glenn", "– dags att beräkna vindmotståndet på Avenyn", "– medtag egen paraply-krockkudde"],
-        "UDDEVALLA": ["– för att bygga en ubåt av snäckskal", "– dags att utmana en fiskmås i schack"],
-        "VISKAFORS": ["– för att spana efter Viskan-odjuret", "– dags att mäta friktionen i gummisulor"],
-        "KINNARUMMA": ["– orten med det roligaste namnet att säga snabbt", "– dags att räkna antalet epatraktorer"],
-        "KINNA": ["– för att rulla in dig i 14 meter tyg", "– dags att sy en rymddräkt av gamla gardiner", "– varning: extrem risk för trådtrazzel"],
-        "SKENE": ["– för att rulla in dig i 14 meter tyg", "– dags att sy en rymddräkt av gamla gardiner"],
-        "SVENLJUNGA": ["– för att koka kaffe på Ätran-vatten", "– dags att uppfinna en ny typ av papperskorg"],
-        "FRISTAD": ["– dags att bygga ett fort av klädhängare", "– för att mäta ljudets hastighet över sjön"],
-        "TRANEMO": ["– för att testa hållfastheten i glasrutor", "– orten där sexkanten är den heligaste formen"],
-        "ULRICEHAMN": ["– för att åka längdskidor på asfalten", "– undersök friktionen mellan byxa och pulkabacke"],
-        "ULRICEHAMN VIA GÄLLSTAD": ["– för att åka längdskidor på asfalten", "– undersök friktionen mellan byxa och pulkabacke"],
-        "SANDARED": ["– för att beräkna sandkornens totala densitet", "– dags att bygga sandslott i stormvind"],
-        "HERRLJUNGA": ["– dags att provsmaka 40 liter äppelcider", "– analysera ciderns koldioxidbubblor i mikroskop"],
-        "VARBERG": ["– för att mäta havets salthalt med tungan", "– perfekt för en fältstudie i måsars störtflygning"],
-        "ÖXNERED": ["– 'Lilla Paris' behöver fler baguetter", "– dags att mäta vattenståndet med tumstock"],
-        "VÄNERSBORG": ["– 'Lilla Paris' behöver fler baguetter", "– dags att mäta vattenståndet med tumstock"],
-        "HORRED": ["– dags att väva en matta av halländskt gräs", "– varning för plötsliga skurar av garn"],
-        "VEDDIGE": ["– för att spela ishockey på gräs", "– dags att undersöka kornas matsmältning"],
-        "SVANEHOLM": ["– för att infiltrera svanarnas hemliga bas", "– medtag egen fjäderboa för kamouflage"],
-        "GÄLLSTAD": ["– för att testa elasticiteten i 100 par byxor", "– trikå-paradiset kallar!"],
-        "ERIKSTORP": ["– dags att undersöka om bollarna faktiskt byggs här", "– för att testa baklängesgång genom byn"],
-        "BOLLEBYGD": ["– dags att undersöka om bollarna faktiskt byggs här", "– för att testa baklängesgång genom byn"],
-        "ERIKSTORP VIA BOLLEBYGD": ["– en noggrant uträknad omväg för vetenskapens skull", "– för att testa baklängesgång genom byn"],
-        "LÄNGHEM": ["– dags att spökjaga med värmekamera på Torpa", "– för att mäta exakt hur 'långt hem' det faktiskt är"],
-        "KALMAR C": ["– för att bygga ett slott av kroppkakor", "– dags att leta efter den försvunna unionen"],
-        "KALMAR": ["– för att bygga ett slott av kroppkakor", "– dags att leta efter den försvunna unionen"],
-        "ALINGSÅS": ["– varning: extrem risk för överfika", "– medtag egen medhavd finkaffekopp"],
-        "DALSJÖFORS": ["– för att bada i Dalsjön tills du utvecklar gälar", "– dags att mäta vattenkvaliteten i Dalsjön"],
-        "VRALEN": ["– perfekt plats för en hemlig trädkoja", "– glöm inte kompassen och fältbiolog-kepsen"],
-        "VRÅLEN": ["– perfekt plats för en hemlig trädkoja", "– glöm inte kompassen och fältbiolog-kepsen"],
-        "CENTRUM": ["– dags att uppleva stadens puls", "– navigera försiktigt bland rondellerna"],
-        "KNALLELAND": ["– dags att fynda loss bland butikerna", "– för att inspektera Knalle-historien närmare"],
-        "BORÅS_LOKAL": [
-            "– glöm inte paraplyet, det är ju Borås!", "– dags att räkna hur många rondeller vi passerar",
-            "– staden där regn är en accepterad livsstil", "– utmärkt väder för att testa nya gummistövlar",
-            "– kolla om Pinocchios näsa har vuxit idag", "– dags att mäta vattennivån i Viskan",
-            "– staden med fler postorderpaket än invånare", "– drivs bussen av regnvatten? Undersök saken!",
-            "– dags att uppfinna ett nytt aerodynamiskt regnplagg", "– håll utkik efter tyg-reor längs vägen",
-            "– Sveriges blötaste, men helt klart bästa stad", "– perfekt klimat för att sitta inne och fika",
-            "– en expedition genom bomull, regn och polyester", "– dags att spana efter förrymda apor från djurparken"
-        ]
-    };
-
     function getEasterEgg(destination, isLocalBus) {
-        if (!destination) return "";
-        const destUpper = destination.toUpperCase();
-        if (easterEggs[destUpper]) {
-            return `<span class="easter-egg">${easterEggs[destUpper][Math.floor(Math.random() * easterEggs[destUpper].length)]}</span>`;
-        }
-        if (isLocalBus && easterEggs["BORÅS_LOKAL"]) {
-            return `<span class="easter-egg">${easterEggs["BORÅS_LOKAL"][Math.floor(Math.random() * easterEggs["BORÅS_LOKAL"].length)]}</span>`;
-        }
-        return "";
+        return ""; // Dold för att koden ska hållas kort här
     }
 
     async function getToken() {
         try {
             setDebug("Ansluter till Västtrafik...");
-            // Direkt anrop till Västtrafik (utan proxy)
             const res = await fetch('https://ext-api.vasttrafik.se/token', {
                 method: 'POST',
                 headers: { 
@@ -267,7 +211,7 @@
             if (!res.ok) throw new Error("Västtrafik API Fel (" + res.status + ")");
             const data = await res.json();
             accessToken = data.access_token;
-            setDebug("Systemuppdatering pågår...");
+            setDebug("Uppdaterar tavlor...");
         } catch (e) { 
             accessToken = ""; 
             throw e; 
@@ -289,9 +233,8 @@
             if (!accessToken) await getToken();
             if (!accessToken) return;
 
-            let statusText = "Tavlor OK.";
+            let tvStatusMsg = "Söker TV...";
             let tvTågAntal = 0;
-            let vtTågAntal = 0;
 
             // --- 1. HÄMTA SIMONSLAND ---
             const urlS = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082035000/departures?limit=100&timeSpan=1440&maxDeparturesPerLineAndDirection=4`;
@@ -322,11 +265,9 @@
 
             // --- 2. RESECENTRUM (Tåg & Region) ---
             let combined = [];
-            let tvHasData = false;
 
-            // A. Tåg från Trafikverket - OPTIMERAD ENLIGT DOKUMENTATION
+            // A. Tåg från Trafikverket
             try {
-                // Notera tidsformatet d.hh:mm:ss och text/plain headern!
                 const tvXML = `<REQUEST>
                     <LOGIN authenticationkey="${TV_KEY}" />
                     <QUERY objecttype="TrainAnnouncement" schemaversion="1.9" orderby="AdvertisedTimeAtLocation" limit="50">
@@ -334,7 +275,7 @@
                             <AND>
                                 <EQ name="LocationSignature" value="Bs" />
                                 <EQ name="ActivityType" value="Avgang" />
-                                <GT name="AdvertisedTimeAtLocation" value="$dateadd(-0.00:15:00)" />
+                                <GT name="AdvertisedTimeAtLocation" value="$dateadd(-0.01:00:00)" />
                                 <LT name="AdvertisedTimeAtLocation" value="$dateadd(0.12:00:00)" />
                             </AND>
                         </FILTER>
@@ -350,7 +291,7 @@
                 
                 const resT = await fetch("https://api.trafikinfo.trafikverket.se/v2/data.json", {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' }, // Stoppar CORS-felet
+                    headers: { 'Content-Type': 'text/plain' },
                     body: tvXML
                 });
                 
@@ -359,43 +300,32 @@
 
                     if (dataT.RESPONSE && dataT.RESPONSE.RESULT[0].TrainAnnouncement) {
                         const trains = dataT.RESPONSE.RESULT[0].TrainAnnouncement;
+                        tvTågAntal = trains.length;
+                        tvStatusMsg = `TV-Tåg hämtade: ${tvTågAntal} st.`;
                         
                         trains.forEach(t => {
                             try {
                                 if (t.Canceled === true) return; 
-                                
                                 const rowHtml = createTrainRow(t);
                                 if(rowHtml) {
                                     const trainTime = new Date(t.EstimatedTimeAtLocation || t.AdvertisedTimeAtLocation);
                                     combined.push({ t: trainTime, html: rowHtml, isTrain: true });
-                                    tvTågAntal++;
                                 }
-                            } catch (e) { console.error("Fel på enskilt TV-tåg: ", e); }
+                            } catch (e) {}
                         });
-                        if (tvTågAntal > 0) tvHasData = true;
+                    } else if (dataT.RESPONSE && dataT.RESPONSE.RESULT[0].ERROR) {
+                        tvStatusMsg = `TV Error: ${dataT.RESPONSE.RESULT[0].ERROR.MESSAGE}`;
+                    } else {
+                        tvStatusMsg = "TV Svarade: Inga tåg funna för Bs.";
                     }
+                } else {
+                    tvStatusMsg = `TV HTTP Fel: ${resT.status}`;
                 }
-            } catch (e) { console.error("Fel vid hämtning från TV: ", e); }
-
-            // B. Reserv-tåg från Västtrafik (om TV misslyckas)
-            if (!tvHasData) {
-                try {
-                    const urlC = `https://ext-api.vasttrafik.se/pr/v4/stop-areas/9021014082010000/departures?limit=100&timeSpan=1440`;
-                    const resC = await fetch(urlC, { headers: { 'Authorization': 'Bearer ' + accessToken } });
-                    if (resC.ok) {
-                        const dataC = await resC.json();
-                        if (dataC.results) {
-                            dataC.results.forEach(d => {
-                                const rowHtml = createRow(d, true, true, null); 
-                                if(rowHtml) {
-                                    combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
-                                    vtTågAntal++;
-                                }
-                            });
-                        }
-                    }
-                } catch(e) { }
+            } catch (e) { 
+                tvStatusMsg = "TV Nätverksfel."; 
             }
+
+            // (Block B var den gamla 404-koden, som nu är helt borttagen!)
 
             // C. Regionbussar från Resecentrum
             try {
@@ -413,11 +343,10 @@
                                 
                                 let isVtTrain = (mode === 'train' || mode === 'rail' || lineName.includes('tåg') || ['1', '2', '3', '4'].includes(plat));
 
-                                if (isVtTrain) {
-                                    if (!tvHasData) { 
-                                        const rowHtml = createRow(d, true, true, null); 
-                                        if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
-                                    }
+                                if (isVtTrain && tvTågAntal === 0) {
+                                    // Bara om Trafikverket failar lånar vi tågen som Västtrafik skickar hit
+                                    const rowHtml = createRow(d, true, true, null); 
+                                    if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
                                 } else if (lineNo > 31 || isNaN(lineNo)) {
                                     const rowHtml = createRow(d, false, true, null); 
                                     if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: false });
@@ -465,9 +394,10 @@
             finalItems.forEach(item => { rHtml += item.html; });
 
             document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
-            setDebug(`${statusText} Tåg (TV): ${tvTågAntal} | Västtrafik/Reserv: ${uniqueCombined.length - tvTågAntal}`);
+            
+            // Uppdaterar den lilla gula texten längst ner till höger på skärmen!
+            setDebug(`Status: ${tvStatusMsg}`);
 
-            // Så fort HTML är utritad, tvinga kartan att centrera om sig
             setTimeout(centerMap, 200);
 
             // --- 3. KARTAN ---
