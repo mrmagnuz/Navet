@@ -226,7 +226,16 @@
         "VRALEN": ["– perfekt plats för en hemlig trädkoja", "– glöm inte kompassen och fältbiolog-kepsen"],
         "VRÅLEN": ["– perfekt plats för en hemlig trädkoja", "– glöm inte kompassen och fältbiolog-kepsen"],
         "CENTRUM": ["– dags att uppleva stadens puls", "– navigera försiktigt bland rondellerna"],
-        "KNALLELAND": ["– dags att fynda loss bland butikerna", "– för att inspektera Knalle-historien närmare"],
+        "KNALLELAND": [
+            "– dags att fynda loss bland butikerna", 
+            "– för att inspektera Knalle-historien närmare",
+            "– framåt Di Gule! Mot Borås Arena!",
+            "– dags att insupa doften av konstgräs och tre poäng",
+            "– glöm inte den gulsvarta halsduken!",
+            "– för att leta efter gamla friidrottsrekord på Ryavallen",
+            "– historiska vingslag från klassiska Ryavallen väntar",
+            "– ska du shoppa eller heja fram IF Elfsborg? Varför inte båda!"
+        ],
         "BORÅS_LOKAL": [
             "– glöm inte paraplyet, det är ju Borås!", 
             "– dags att räkna hur många rondeller vi passerar",
@@ -257,12 +266,10 @@
         ]
     };
 
-    // Ny, smart funktion som låser fast texten vid ett specifikt ID!
     function getEasterEgg(destination, isLocalBus, uniqueId) {
         if (!destination) return "";
         const destUpper = destination.toUpperCase();
         
-        // En enkel hash-funktion för att få fram en fast siffra baserat på avgångens unika ID
         let hash = 0;
         const str = uniqueId ? uniqueId.toString() : destination;
         for (let i = 0; i < str.length; i++) {
@@ -270,7 +277,6 @@
         }
         hash = Math.abs(hash);
 
-        // Använd hashen för att välja text. Samma buss/tåg = Samma text varje gång den laddar om!
         if (easterEggs[destUpper]) {
             return `<span class="easter-egg">${easterEggs[destUpper][hash % easterEggs[destUpper].length]}</span>`;
         }
@@ -426,6 +432,7 @@
                                 let isVtTrain = (mode === 'train' || mode === 'rail' || lineName.includes('tåg') || ['1', '2', '3', '4'].includes(plat));
 
                                 if (isVtTrain && tvTågAntal === 0) {
+                                    // Bara om Trafikverket failar helt använder vi Västtrafiks tåg-data
                                     const rowHtml = createRow(d, true, true, null); 
                                     if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
                                 } else if (lineNo > 31 || isNaN(lineNo)) {
@@ -451,11 +458,9 @@
                 }
             });
 
-            // Göm avgångar som gick för mer än en minut sedan
             const limitTime = new Date(new Date().getTime() - 60000); 
             let futureItems = uniqueCombined.filter(item => item.t > limitTime);
             
-            // Plocka exakt de 12 första oavsett tåg eller buss
             let finalItems = futureItems.slice(0, 12);
 
             let rHtml = "";
@@ -514,7 +519,6 @@
             let dest = translateTouristDestinations(rawDest);
             const plat = d.stopPoint && d.stopPoint.platform ? d.stopPoint.platform : "-";
             
-            // Skapar ett unikt ID för bussen baserat på resans Västtrafik-ID eller namn/tid.
             const uniqueId = (d.serviceJourney && d.serviceJourney.id) ? d.serviceJourney.id : (name + dest + time.getTime());
             const egg = getEasterEgg(dest, !isRightColumn, uniqueId);
             
@@ -566,7 +570,6 @@
             if (locCode) dest = stations[locCode.toUpperCase()] || locCode;
         }
         
-        // Skapar ett unikt ID för tåget baserat på tågnummer
         const uniqueId = t.AdvertisedTrainIdent ? t.AdvertisedTrainIdent : (dest + timeStr);
         const egg = getEasterEgg(dest, false, uniqueId);
         
@@ -591,7 +594,15 @@
         </div>`;
     }
 
-    function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'}); }
+    function updateClock() { 
+        const now = new Date();
+        document.getElementById('clock').innerText = now.toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'}); 
+        
+        if (now.getHours() === 3 && now.getMinutes() === 0 && now.getSeconds() === 0) {
+            setDebug("Nattlig omstart för att rensa minnet...");
+            location.reload();
+        }
+    }
 </script>
 </body>
 </html>
