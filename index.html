@@ -273,7 +273,7 @@
                     <QUERY objecttype="TrainAnnouncement" schemaversion="1.9" orderby="AdvertisedTimeAtLocation" limit="50">
                         <FILTER>
                             <AND>
-                                <EQ name="LocationSignature" value="Bs" />
+                                <EQ name="LocationSignature" value="G" />
                                 <EQ name="ActivityType" value="Avgang" />
                                 <GT name="AdvertisedTimeAtLocation" value="$dateadd(-0.01:00:00)" />
                                 <LT name="AdvertisedTimeAtLocation" value="$dateadd(0.12:00:00)" />
@@ -513,3 +513,4 @@
 </script>
 </body>
 </html>
+
