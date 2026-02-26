@@ -68,11 +68,10 @@
         .dest-wrapper { flex-grow: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
         .destination { font-size: 0.95rem; font-weight: 900; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
         
-        /* Ny layout: under-raden för spår/läge och easter egg */
         .sub-info {
             display: flex;
             align-items: center;
-            gap: 8px; /* Avstånd mellan Läge och Skämt */
+            gap: 8px; 
             overflow: hidden;
         }
         
@@ -81,7 +80,7 @@
             color: #666; 
             font-weight: 700; 
             text-transform: uppercase; 
-            flex-shrink: 0; /* Tvingar "Läge X" att alltid få plats */
+            flex-shrink: 0; 
         }
 
         .easter-egg { 
@@ -91,18 +90,55 @@
             font-weight: 700; 
             white-space: nowrap; 
             overflow: hidden; 
-            text-overflow: ellipsis; /* Klipper långa skämt med ... */
+            text-overflow: ellipsis; 
             flex-grow: 1;
         }
         
         .time-area { text-align: right; min-width: 60px; flex-shrink: 0; }
         .eta { font-size: 1.5rem; font-weight: 900; color: var(--navet-green); line-height: 1; }
         
+        /* FOOTER MED RULLANDE TEXT */
         footer { 
             padding: 8px 40px; background: var(--navet-dark); color: white; display: flex; 
             justify-content: space-between; align-items: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; 
+            height: 35px;
         }
-        #status-area { display: flex; gap: 15px; align-items: center; }
+        .footer-left { white-space: nowrap; flex-shrink: 0; }
+        .footer-right { display: flex; gap: 15px; align-items: center; white-space: nowrap; flex-shrink: 0; }
+        
+        /* Den nya mitten-sektionen med mask-image för snygg uttoning i kanterna */
+        .footer-center {
+            flex-grow: 1;
+            overflow: hidden;
+            margin: 0 30px;
+            display: flex;
+            align-items: center;
+            height: 100%;
+            mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
+        }
+
+        .marquee-container {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .marquee-content {
+            display: inline-block;
+            padding-left: 100%;
+            animation: marquee 25s linear infinite;
+            color: var(--navet-green);
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            font-size: 1rem;
+        }
+
+        @keyframes marquee {
+            0%   { transform: translate(0, 0); }
+            100% { transform: translate(-100%, 0); }
+        }
+
         #countdown-timer { color: var(--navet-green); font-weight: 900; }
         #debug-log { font-size: 0.75rem; opacity: 0.7; color: #ffcc00; }
     </style>
@@ -143,8 +179,15 @@
 </div>
 
 <footer>
-    <div>UPPLEV. LÄR. UTFORSKA.</div>
-    <div id="status-area">
+    <div class="footer-left">UPPLEV. LÄR. UTFORSKA.</div>
+    
+    <div class="footer-center">
+        <div class="marquee-container">
+            <div class="marquee-content" id="fact-marquee">Laddar dagens fakta...</div>
+        </div>
+    </div>
+
+    <div class="footer-right">
         <span id="countdown-timer">Uppdaterar om: 30s</span>
         <span style="opacity: 0.3;">|</span>
         <span id="debug-log">System startar...</span>
@@ -169,12 +212,79 @@
     const STOP_SIMONSLAND = [57.72557, 12.93841];
     const STOP_RESECENTRUM = [57.720733, 12.932754];
 
+    // --- 50 ROLIGA FAKTA FÖR RULLTEXTEN ---
+    const funFacts = [
+        "Vattenmolekyler är pyttesmå – en enda vattendroppe innehåller fler molekyler än det finns droppar i havet!",
+        "Du delar cirka 50 % av ditt DNA med en banan.",
+        "Ljusets hastighet är ungefär 300 000 kilometer i sekunden.",
+        "Det tar drygt åtta minuter för ljuset från solen att resa hela vägen till jorden.",
+        "En blixt kan värma upp luften runt omkring till 30 000 grader – fem gånger varmare än solens yta!",
+        "Navet slog upp portarna för första gången redan 1989. Vi har älskat naturvetenskap i över 30 år!",
+        "Bläckfiskar har tre hjärtan och deras blod är blått.",
+        "Det finns fler stjärnor i universum än det finns sandkorn på alla jordens stränder tillsammans.",
+        "Om du vecklade ut alla blodkärl i din kropp skulle de räcka över två varv runt jorden.",
+        "Ett normalstort moln väger ungefär lika mycket som 100 elefanter!",
+        "Arkeologer har hittat 3000 år gammal honung i egyptiska gravar – och den går fortfarande att äta!",
+        "Hela 70 % av jordens syre produceras av alger och växtplankton i havet, inte av träd.",
+        "Ett fullvuxet träd kan suga åt sig upp till 20 kilo koldioxid på ett år.",
+        "Ljud färdas mer än fyra gånger snabbare i vatten än vad det gör i luft.",
+        "Myror sover aldrig på riktigt. De tar istället pyttesmå tupplurar på cirka 8 minuter, två gånger om dagen.",
+        "Vatten expanderar med nästan 10 % när det fryser. Det är därför isbitar flyter i glaset!",
+        "Guld är extremt formbart. Ett enda gram guld kan dras ut till en över 3 kilometer lång tråd.",
+        "Du blinkar ungefär 15–20 gånger i minuten. Det blir mer än 10 miljoner blinkningar på ett år!",
+        "Astronauter kan bli upp till fem centimeter längre i rymden eftersom ryggraden tänjs ut utan gravitation.",
+        "Jordens inre kärna är lika varm som solens yta, ungefär 6000 grader Celsius.",
+        "Ett strutsöga är faktiskt större än dess hjärna.",
+        "Diamanter är hårda, men de kan faktiskt brinna om temperaturen överstiger 700 grader i rent syre.",
+        "Det krävs ungefär 2700 liter vatten för att producera en enda t-shirt av bomull. Hållbart är smart!",
+        "Eiffeltornet i Paris kan bli upp till 15 centimeter högre på sommaren när värmen får metallen att utvidgas.",
+        "Visste du att det finns en fjäril som smakar med fötterna? Så hittar den rätt blad att lägga ägg på.",
+        "Snöflingor har alltid exakt sex kanter. Ren och skär matematik direkt från himlen!",
+        "Isbjörnar ser vita ut, men under pälsen är deras hud helt svart för att bättre absorbera värme från solen.",
+        "En loppa kan hoppa 200 gånger sin egen längd. Om du var en loppa hade du kunnat hoppa över ett höghus!",
+        "Människokroppen innehåller tillräckligt med kol för att tillverka blyertset till 900 pennor.",
+        "Forskare har upptäckt en planet (55 Cancri e) som de tror till stor del består av solid diamant.",
+        "Det finns över 100 miljarder galaxer i det observerbara universumet.",
+        "Hajar simmade runt i våra hav långt innan de allra första träden ens hade utvecklats på land.",
+        "Kameleonter kan röra och fokusera sina ögon i två helt olika riktningar samtidigt.",
+        "Bananer innehåller en minimal (och helt ofarlig) mängd av en radioaktiv isotop, vilket gör dem svagt radioaktiva.",
+        "Det matematiska talet Pi (3,14...) har oändligt många decimaler utan att något mönster någonsin upprepas.",
+        "Din näsa är ett superorgan – den kan minnas upp till 50 000 olika dofter.",
+        "Glas är ett fantastiskt material som kan smältas ner och återvinnas oändligt många gånger utan att tappa kvalitet.",
+        "Valar är, förutom människan, det enda däggdjuret som man vet sjunger melodiska sånger för varandra.",
+        "DNA-kedjan i en enda av dina celler är ungefär två meter lång om du skulle sträcka ut den.",
+        "Ett äpple flyter i vatten eftersom hela 25 % av äpplets volym faktiskt består av ren luft.",
+        "Borås är känt för regn, men regn är ju egentligen bara vattnets fascinerande kretslopp i action!",
+        "En vuxen människa består till cirka 60 % av vatten. Inte konstigt att vi trivs i Borås!",
+        "Spindlar har faktiskt inte rött blod som vi, deras blod är helt genomskinligt.",
+        "Visste du att Vintergatan rör sig mot Andromedagalaxen? Om cirka 4 miljarder år kommer de att krocka.",
+        "Det matematiska Fibonacci-mönstret styr hur allt från solrosfrön till tallkottar och ananas växer.",
+        "Om du drar ut dina tarmar i en lång rad... så dör du. (Men de är över 7 meter långa!)",
+        "Jorden snurrar runt sin egen axel i en hastighet av ungefär 1670 km/h vid ekvatorn.",
+        "Månen rör sig bort från jorden med ungefär 3,8 centimeter varje år.",
+        "Vulkanen Olympus Mons på Mars är solsystemets högsta berg, nästan tre gånger så högt som Mount Everest.",
+        "Navet i cykelhjulet håller allt samman. Tillsammans upplever, lär och utforskar vi världen!"
+    ];
+
+    let currentFactIndex = Math.floor(Math.random() * funFacts.length);
+
     window.onload = function() {
         if (typeof L === 'undefined') {
             setDebug("Väntar på internetanslutning... Laddar om sidan om 5 sek.");
             setTimeout(() => location.reload(), 5000);
             return;
         }
+        
+        // Initiera den rullande texten
+        const marqueeEl = document.getElementById("fact-marquee");
+        marqueeEl.innerText = "💡 VISSTE DU ATT: " + funFacts[currentFactIndex];
+        
+        // Byt fakta varje gång animationen börjar om!
+        marqueeEl.addEventListener("animationiteration", () => {
+            currentFactIndex = (currentFactIndex + 1) % funFacts.length;
+            marqueeEl.innerText = "💡 VISSTE DU ATT: " + funFacts[currentFactIndex];
+        });
+
         initSystem();
     };
 
@@ -337,7 +447,6 @@
 
         usedEasterEggs.add(selectedText);
 
-        // Skickas tillbaka som span för att kunna ligga inline bredvid spår/läge
         return `<span class="easter-egg">${selectedText}</span>`;
     }
 
@@ -500,7 +609,7 @@
                 }
             } catch(e) {}
 
-            // -- FILTER OCH PRIORITERING --
+            // -- FILTER OCH PRIORITERING (Endast strikt tid) --
             let uniqueCombined = [];
             let prevId = "";
             combined.sort((a,b) => a.t - b.t); 
@@ -575,8 +684,6 @@
             const plat = d.stopPoint && d.stopPoint.platform ? d.stopPoint.platform : "-";
             
             const uniqueId = (d.serviceJourney && d.serviceJourney.id) ? d.serviceJourney.id : (name + dest + time.getTime());
-            
-            // Texten hämtas
             const egg = getEasterEgg(dest, !isRightColumn, uniqueId);
             
             if (isTrainStyle) {
