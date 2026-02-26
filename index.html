@@ -65,24 +65,35 @@
             font-weight: 900; border-radius: 6px; margin-right: 12px; color: white; font-size: 1.1rem; flex-shrink: 0;
         }
         
-        /* Uppdaterad layout för texten */
         .dest-wrapper { flex-grow: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
-        .destination { font-size: 0.95rem; font-weight: 900; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.1; }
+        .destination { font-size: 0.95rem; font-weight: 900; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
         
-        /* Den nya snygga designen för dina skämt! */
+        /* Ny layout: under-raden för spår/läge och easter egg */
+        .sub-info {
+            display: flex;
+            align-items: center;
+            gap: 8px; /* Avstånd mellan Läge och Skämt */
+            overflow: hidden;
+        }
+        
+        .platform { 
+            font-size: 0.75rem; 
+            color: #666; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            flex-shrink: 0; /* Tvingar "Läge X" att alltid få plats */
+        }
+
         .easter-egg { 
-            color: #3b8734; /* En lite mörkare, mer lättläst grön */
+            color: #3b8734; 
             font-size: 0.8rem; 
             font-style: italic; 
             font-weight: 700; 
             white-space: nowrap; 
             overflow: hidden; 
-            text-overflow: ellipsis; 
-            padding-top: 3px;
-            padding-bottom: 1px;
+            text-overflow: ellipsis; /* Klipper långa skämt med ... */
+            flex-grow: 1;
         }
-        
-        .platform { font-size: 0.75rem; color: #666; font-weight: 700; text-transform: uppercase; }
         
         .time-area { text-align: right; min-width: 60px; flex-shrink: 0; }
         .eta { font-size: 1.5rem; font-weight: 900; color: var(--navet-green); line-height: 1; }
@@ -326,8 +337,8 @@
 
         usedEasterEggs.add(selectedText);
 
-        // Skickas nu tillbaka inbakad i en block-div för den nya layouten
-        return `<div class="easter-egg">${selectedText}</div>`;
+        // Skickas tillbaka som span för att kunna ligga inline bredvid spår/läge
+        return `<span class="easter-egg">${selectedText}</span>`;
     }
 
     async function getToken() {
@@ -565,7 +576,7 @@
             
             const uniqueId = (d.serviceJourney && d.serviceJourney.id) ? d.serviceJourney.id : (name + dest + time.getTime());
             
-            // Uppdaterat för den nya layouten där egg ligger på egen rad!
+            // Texten hämtas
             const egg = getEasterEgg(dest, !isRightColumn, uniqueId);
             
             if (isTrainStyle) {
@@ -573,8 +584,10 @@
                     <div class="line-badge" style="background:#666666; font-size:0.7rem; text-align:center; padding: 2px; line-height:1.1;">VÄSTTÅG</div>
                     <div class="dest-wrapper">
                         <div class="destination">MOT ${dest}</div>
-                        ${egg}
-                        <div class="platform">Spår ${plat}</div>
+                        <div class="sub-info">
+                            <span class="platform">Spår ${plat}</span>
+                            ${egg}
+                        </div>
                     </div>
                     <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
                 </div>`;
@@ -587,8 +600,10 @@
                 <div class="line-badge" style="background:${bg}">${name}</div>
                 <div class="dest-wrapper">
                     <div class="destination">MOT ${dest}</div>
-                    ${egg}
-                    <div class="platform">Läge ${plat}</div>
+                    <div class="sub-info">
+                        <span class="platform">Läge ${plat}</span>
+                        ${egg}
+                    </div>
                 </div>
                 <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
             </div>`;
@@ -636,8 +651,10 @@
             <div class="line-badge" style="background:#666666; font-size:0.7rem; text-align:center; padding: 2px; line-height:1.1;">${op.substring(0,10).toUpperCase()}</div>
             <div class="dest-wrapper">
                 <div class="destination">MOT ${dest}</div>
-                ${egg}
-                <div class="platform">Spår ${plat}</div>
+                <div class="sub-info">
+                    <span class="platform">Spår ${plat}</span>
+                    ${egg}
+                </div>
             </div>
             <div class="time-area"><span class="eta">${diff <= 0 ? 'NU' : diff}</span>${diff > 0 ? '<span style="font-size:0.6rem;display:block;font-weight:700">MIN</span>' : ''}</div>
         </div>`;
