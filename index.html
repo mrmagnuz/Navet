@@ -321,7 +321,6 @@
 
             // A. Tåg från Trafikverket
             try {
-                // Notera: LocationSignature="Bsc" (Borås Central)
                 const tvXML = `<REQUEST>
                     <LOGIN authenticationkey="${TV_KEY}" />
                     <QUERY objecttype="TrainAnnouncement" schemaversion="1.9" orderby="AdvertisedTimeAtLocation" limit="50">
@@ -409,11 +408,12 @@
                 }
             } catch(e) {}
 
-            // -- FILTER OCH PRIORITERING --
+            // -- FILTER OCH PRIORITERING (Endast tid) --
             let uniqueCombined = [];
             let prevId = "";
             combined.sort((a,b) => a.t - b.t); 
             
+            // Ta bort dubbletter
             combined.forEach(item => {
                 let id = item.t.getTime().toString() + item.html.substring(0,20);
                 if (id !== prevId) {
@@ -422,30 +422,21 @@
                 }
             });
 
+            // Göm avgångar som gick för mer än en minut sedan
             const limitTime = new Date(new Date().getTime() - 60000); 
             let futureItems = uniqueCombined.filter(item => item.t > limitTime);
             
-            let trains = futureItems.filter(item => item.isTrain);
-            let buses = futureItems.filter(item => !item.isTrain);
-            
             const MAX_TOTAL = 12; 
-            const MAX_TRAINS = 6; 
             
-            let renderTrains = trains.slice(0, MAX_TRAINS);
-            let renderBuses = buses.slice(0, MAX_TOTAL - renderTrains.length);
-            
-            if (renderTrains.length + renderBuses.length < MAX_TOTAL) {
-                let extratrains = trains.slice(MAX_TRAINS, MAX_TRAINS + (MAX_TOTAL - renderTrains.length - renderBuses.length));
-                renderTrains = renderTrains.concat(extratrains);
-            }
-            
-            let finalItems = renderTrains.concat(renderBuses);
-            finalItems.sort((a,b) => a.t - b.t);
+            // Klipp ut de första 12 i rent kronologisk ordning
+            let finalItems = futureItems.slice(0, MAX_TOTAL);
 
             let rHtml = "";
             finalItems.forEach(item => { rHtml += item.html; });
 
             document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
+            
+            // Uppdaterar den lilla texten längst ner till höger på skärmen
             setDebug(`Status: ${tvStatusMsg}`);
 
             setTimeout(centerMap, 200);
@@ -529,7 +520,6 @@
         
         const diff = Math.round((new Date(timeStr) - new Date()) / 60000);
         
-        // HÄR HAR VI LAGT IN DE NYA FÖRKORTNINGARNA (Vbc, Hrc etc.)
         const stations = { 
             'G': 'GÖTEBORG C', 
             'HR': 'HERRLJUNGA', 'HRC': 'HERRLJUNGA', 
