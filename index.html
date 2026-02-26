@@ -228,24 +228,54 @@
         "CENTRUM": ["– dags att uppleva stadens puls", "– navigera försiktigt bland rondellerna"],
         "KNALLELAND": ["– dags att fynda loss bland butikerna", "– för att inspektera Knalle-historien närmare"],
         "BORÅS_LOKAL": [
-            "– glöm inte paraplyet, det är ju Borås!", "– dags att räkna hur många rondeller vi passerar",
-            "– staden där regn är en accepterad livsstil", "– utmärkt väder för att testa nya gummistövlar",
-            "– kolla om Pinocchios näsa har vuxit idag", "– dags att mäta vattennivån i Viskan",
-            "– staden med fler postorderpaket än invånare", "– drivs bussen av regnvatten? Undersök saken!",
-            "– dags att uppfinna ett nytt aerodynamiskt regnplagg", "– håll utkik efter tyg-reor längs vägen",
-            "– Sveriges blötaste, men helt klart bästa stad", "– perfekt klimat för att sitta inne och fika",
-            "– en expedition genom bomull, regn och polyester", "– dags att spana efter förrymda apor från djurparken"
+            "– glöm inte paraplyet, det är ju Borås!", 
+            "– dags att räkna hur många rondeller vi passerar",
+            "– staden där regn är en accepterad livsstil", 
+            "– utmärkt väder för att testa nya gummistövlar",
+            "– kolla om Pinocchios näsa har vuxit idag", 
+            "– dags att mäta vattennivån i Viskan",
+            "– staden med fler postorderpaket än invånare", 
+            "– drivs bussen av regnvatten? Undersök saken!",
+            "– dags att uppfinna ett nytt aerodynamiskt regnplagg", 
+            "– håll utkik efter tyg-reor längs vägen",
+            "– Sveriges blötaste, men helt klart bästa stad", 
+            "– perfekt klimat för att sitta inne och fika",
+            "– en expedition genom bomull, regn och polyester", 
+            "– dags att spana efter förrymda apor från djurparken",
+            "– nästa stopp: en nio meter hög bronsskulptur",
+            "– visste du att Borås har flest gatumålningar per capita?",
+            "– staden där fredagsmyset levereras med postorder",
+            "– känn doften av nytryckt Ellos-katalog!",
+            "– dags att fika under ett gigantiskt tygstycke",
+            "– vi kör tills vi hittar solen (kan ta tid)",
+            "– Borås: Där regndroppar ofta faller horisontellt",
+            "– är det 100% bomull i buss-sätena?",
+            "– dags att titta på skulpturer och bli lite finkulturell",
+            "– medtag egen flytväst för säkerhets skull",
+            "– navet i svensk teko-industri (och regnproduktion)",
+            "– staden som är vackrast i 50 nyanser av grått"
         ]
     };
 
-    function getEasterEgg(destination, isLocalBus) {
+    // Ny, smart funktion som låser fast texten vid ett specifikt ID!
+    function getEasterEgg(destination, isLocalBus, uniqueId) {
         if (!destination) return "";
         const destUpper = destination.toUpperCase();
+        
+        // En enkel hash-funktion för att få fram en fast siffra baserat på avgångens unika ID
+        let hash = 0;
+        const str = uniqueId ? uniqueId.toString() : destination;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        hash = Math.abs(hash);
+
+        // Använd hashen för att välja text. Samma buss/tåg = Samma text varje gång den laddar om!
         if (easterEggs[destUpper]) {
-            return `<span class="easter-egg">${easterEggs[destUpper][Math.floor(Math.random() * easterEggs[destUpper].length)]}</span>`;
+            return `<span class="easter-egg">${easterEggs[destUpper][hash % easterEggs[destUpper].length]}</span>`;
         }
         if (isLocalBus && easterEggs["BORÅS_LOKAL"]) {
-            return `<span class="easter-egg">${easterEggs["BORÅS_LOKAL"][Math.floor(Math.random() * easterEggs["BORÅS_LOKAL"].length)]}</span>`;
+            return `<span class="easter-egg">${easterEggs["BORÅS_LOKAL"][hash % easterEggs["BORÅS_LOKAL"].length]}</span>`;
         }
         return "";
     }
@@ -339,6 +369,7 @@
                         <INCLUDE>ToLocation</INCLUDE>
                         <INCLUDE>ProductInformation</INCLUDE>
                         <INCLUDE>Canceled</INCLUDE>
+                        <INCLUDE>AdvertisedTrainIdent</INCLUDE>
                     </QUERY>
                 </REQUEST>`;
                 
@@ -395,7 +426,6 @@
                                 let isVtTrain = (mode === 'train' || mode === 'rail' || lineName.includes('tåg') || ['1', '2', '3', '4'].includes(plat));
 
                                 if (isVtTrain && tvTågAntal === 0) {
-                                    // Bara om Trafikverket failar helt använder vi Västtrafiks tåg-data
                                     const rowHtml = createRow(d, true, true, null); 
                                     if(rowHtml) combined.push({ t: new Date(d.estimatedTime || d.plannedTime), html: rowHtml, isTrain: true });
                                 } else if (lineNo > 31 || isNaN(lineNo)) {
@@ -408,12 +438,11 @@
                 }
             } catch(e) {}
 
-            // -- FILTER OCH PRIORITERING (Endast tid) --
+            // -- FILTER OCH PRIORITERING (Endast strikt tid) --
             let uniqueCombined = [];
             let prevId = "";
             combined.sort((a,b) => a.t - b.t); 
             
-            // Ta bort dubbletter
             combined.forEach(item => {
                 let id = item.t.getTime().toString() + item.html.substring(0,20);
                 if (id !== prevId) {
@@ -426,17 +455,14 @@
             const limitTime = new Date(new Date().getTime() - 60000); 
             let futureItems = uniqueCombined.filter(item => item.t > limitTime);
             
-            const MAX_TOTAL = 12; 
-            
-            // Klipp ut de första 12 i rent kronologisk ordning
-            let finalItems = futureItems.slice(0, MAX_TOTAL);
+            // Plocka exakt de 12 första oavsett tåg eller buss
+            let finalItems = futureItems.slice(0, 12);
 
             let rHtml = "";
             finalItems.forEach(item => { rHtml += item.html; });
 
             document.getElementById('board-resecentrum').innerHTML = rHtml || "<div style='padding:10px;'>Inga avgångar funna.</div>";
             
-            // Uppdaterar den lilla texten längst ner till höger på skärmen
             setDebug(`Status: ${tvStatusMsg}`);
 
             setTimeout(centerMap, 200);
@@ -487,7 +513,10 @@
             let rawDest = d.serviceJourney.direction ? d.serviceJourney.direction.split(',')[0].trim() : "OKÄND";
             let dest = translateTouristDestinations(rawDest);
             const plat = d.stopPoint && d.stopPoint.platform ? d.stopPoint.platform : "-";
-            const egg = getEasterEgg(dest, !isRightColumn);
+            
+            // Skapar ett unikt ID för bussen baserat på resans Västtrafik-ID eller namn/tid.
+            const uniqueId = (d.serviceJourney && d.serviceJourney.id) ? d.serviceJourney.id : (name + dest + time.getTime());
+            const egg = getEasterEgg(dest, !isRightColumn, uniqueId);
             
             if (isTrainStyle) {
                 return `<div class="departure-row" style="border-right-color:#666666">
@@ -536,7 +565,10 @@
             const locCode = (typeof locObj === 'string') ? locObj : locObj.LocationName;
             if (locCode) dest = stations[locCode.toUpperCase()] || locCode;
         }
-        const egg = getEasterEgg(dest, false);
+        
+        // Skapar ett unikt ID för tåget baserat på tågnummer
+        const uniqueId = t.AdvertisedTrainIdent ? t.AdvertisedTrainIdent : (dest + timeStr);
+        const egg = getEasterEgg(dest, false, uniqueId);
         
         let op = "TÅG";
         if (t.ProductInformation && t.ProductInformation.length > 0) {
